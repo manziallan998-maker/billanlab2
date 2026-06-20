@@ -2181,6 +2181,161 @@ window.addEventListener('DOMContentLoaded',async()=>{
   ThemeModule.init();AuthScreenModule.init();wireNav();SearchModule.init();
   try{await AuthModule.init()}catch(err){console.error(err);Util.qs('#initialLoader').remove();AuthModule.showAuthScreen()}
 });
+  // =========================================================
+// GITHUB OAUTH CALLBACK HANDLER - COMPLETE FIX
+// =========================================================
+
+// 1. Handle the OAuth callback when page loads with token in URL
+async function handleOAuthCallback() {
+  const hash = window.location.hash;
+  
+  // Check if we have an OAuth callback
+  if (hash && hash.includes('access_token')) {
+    console.log('🔄 OAuth callback detected, processing...');
+    
+    try {
+      // Get the session from Supabase
+      const { data, error } = await supa.auth.getSession();
+      if (error) throw error;
+      
+      if (data.session) {
+        console.log('✅ Session found, logging in...');
+        
+        // Clean the URL - remove the hash with tokens
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show success message
+        UIModule.toast('✅ Successfully signed in with GitHub!', '', 'success');
+        
+        // Set session state
+        State.session = data.session;
+        
+        // Wait a moment then reload to refresh the app
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        
+        return true;
+      } else {
+        console.warn('⚠️ No session found despite OAuth callback');
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ OAuth callback error:', err);
+      UIModule.toast('GitHub sign-in failed', err.message, 'error');
+      return false;
+    }
+  }
+  return false;
+}
+
+// 2. Modified AuthModule.init to handle OAuth properly
+// Replace your existing AuthModule.init with this
+const AuthModule = {
+  async init(){
+    // First, check if this is an OAuth callback
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      // Let the OAuth handler process it
+      const handled = await handleOAuthCallback();
+      if (handled) {
+        // OAuth handled successfully, return
+        Util.qs('#initialLoader').remove();
+        return;
+      }
+    }
+    
+    // Normal login flow
+    const { data } = await supa.auth.getSession();
+    State.session = data.session;
+    
+    supa.auth.onAuthStateChange((event, session) => {
+      State.session = session;
+      if (event === 'SIGNED_OUT') {
+        AuthModule.showAuthScreen();
+      }
+      if (event === 'SIGNED_IN') {
+        UIModule.toast('Signed in successfully!', '', 'success');
+        AuthModule.bootAfterLogin();
+      }
+    });
+    
+    if (State.session) {
+      await AuthModule.bootAfterLogin();
+    } else {
+      AuthModule.showAuthScreen();
+    }
+    Util.qs('#initialLoader').remove();
+  },
+  
+  // Keep all your other AuthModule methods as they are...
+  // (showAuthScreen, bootAfterLogin, loadProfile, resetInactivityTimer,
+  //  login, signup, resetPassword, logout, signInWithGithub)
+};
+
+// 3. Update the GitHub login button handler
+// Replace your existing github login button handler with this:
+async function signInWithGithub() {
+  try {
+    const { data, error } = await supa.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname,
+      },
+    });
+    if (error) throw error;
+    // The page will redirect to GitHub, then back to your app
+  } catch (err) {
+    UIModule.toast('GitHub login failed', err.message, 'error');
+  }
+}
+
+// 4. Override the AuthScreenModule.init to use the new handler
+// Replace the existing github login button click handler
+// Find this line in your AuthScreenModule.init():
+// Util.qs('#githubLoginBtn').addEventListener('click', async () => {
+//   await AuthModule.signInWithGithub();
+// });
+// Replace it with:
+Util.qs('#githubLoginBtn')?.addEventListener('click', async () => {
+  await signInWithGithub();
+});
+
+// 5. Update the DOMContentLoaded handler
+// Replace your existing DOMContentLoaded with this:
+window.addEventListener('DOMContentLoaded', async () => {
+  ThemeModule.init();
+  AuthScreenModule.init();
+  wireNav();
+  SearchModule.init();
+  
+  // Check for OAuth callback
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    // Let the handler process it
+    await handleOAuthCallback();
+  } else {
+    // Normal initialization
+    try {
+      await AuthModule.init();
+    } catch (err) {
+      console.error('Initialization error:', err);
+      Util.qs('#initialLoader').remove();
+      AuthModule.showAuthScreen();
+    }
+  }
+});
+
+// 6. Also handle the case where page loads with hash already present
+// This catches any edge cases
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(async () => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      await handleOAuthCallback();
+    }
+  }, 100);
+}
 </script>
 </body>
 </html>
