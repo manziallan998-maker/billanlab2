@@ -9,12 +9,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-/* ... (your existing CSS - keep it the same) ... */
+/* =========================================================
+   DESIGN TOKENS & RESET
+   ========================================================= */
 :root{
   --bg:#11141a;--surface:#171b22;--surface-2:#1f242d;--surface-3:#272d38;
   --border:#2b3140;--border-soft:#21262f;--text:#e9ecf1;--text-dim:#9aa4b2;--text-faint:#67707f;
   --accent:#e8a33d;--accent-dim:#a8783a;--blue:#4c8bf5;--success:#3fb37f;--danger:#e5484d;--warning:#e8a33d;
-  --purple:#9b7ee6;--teal:#2ec4b6;
+  --purple:#9b7ee6;--teal:#2ec4b6;--chat-mine:#1e3a5f;--chat-other:#1f242d;
   --radius:10px;--radius-sm:6px;
   --font-display:'Space Grotesk',sans-serif;--font-body:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
   --shadow-1:0 1px 2px rgba(0,0,0,.4);--shadow-2:0 8px 24px rgba(0,0,0,.45);
@@ -23,6 +25,7 @@
   --bg:#f4f5f7;--surface:#fff;--surface-2:#f0f1f4;--surface-3:#e7e9ee;
   --border:#dde0e6;--border-soft:#e7e9ee;--text:#1a1d24;--text-dim:#5a6270;--text-faint:#8a93a3;
   --shadow-1:0 1px 2px rgba(20,20,30,.06);--shadow-2:0 12px 32px rgba(20,20,30,.12);
+  --chat-mine:#dbeafe;--chat-other:#f0f1f4;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -30,7 +33,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-si
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:14px}
-::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:8px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -38,6 +41,8 @@ h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-.01em;font-weight:60
 .mono{font-family:var(--font-mono)}
 #app{display:none;height:100vh;overflow:hidden}
 #app.ready{display:flex}
+
+/* ---- SIDEBAR ---- */
 .sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border-soft);display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:10px;padding:18px 18px 16px;border-bottom:1px solid var(--border-soft)}
 .brand-mark{width:30px;height:30px;border-radius:7px;flex-shrink:0;background:conic-gradient(from 220deg,var(--accent),var(--blue),var(--accent));position:relative}
@@ -46,11 +51,12 @@ h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-.01em;font-weight:60
 .brand-sub{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono)}
 .nav{flex:1;overflow-y:auto;padding:14px 10px}
 .nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);padding:10px 10px 6px;font-family:var(--font-mono)}
-.nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--radius-sm);color:var(--text-dim);font-size:13.5px;font-weight:500;margin-bottom:2px;border-left:2px solid transparent}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--radius-sm);color:var(--text-dim);font-size:13.5px;font-weight:500;margin-bottom:2px;border-left:2px solid transparent;cursor:pointer}
 .nav-item:hover{background:var(--surface-2);color:var(--text)}
 .nav-item.active{background:var(--surface-2);color:var(--text);border-left:2px solid var(--accent)}
 .nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:.9}
 .nav-item .badge-count{margin-left:auto;font-size:10.5px;background:var(--surface-3);color:var(--text-dim);padding:1px 6px;border-radius:20px;font-family:var(--font-mono)}
+.nav-item .unread-dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0}
 .sidebar-footer{padding:12px;border-top:1px solid var(--border-soft)}
 .role-pill{display:inline-flex;align-items:center;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:20px;background:var(--surface-2);color:var(--text-dim);font-family:var(--font-mono);border:1px solid var(--border-soft)}
 .main-col{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -83,7 +89,7 @@ h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-.01em;font-weight:60
 .dropdown-header{padding:12px 14px;border-bottom:1px solid var(--border-soft)}
 .dropdown-header .dn{font-size:13px;font-weight:600}
 .dropdown-header .de{font-size:11.5px;color:var(--text-faint);margin-top:2px}
-.dropdown-item{padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:9px;color:var(--text-dim)}
+.dropdown-item{padding:9px 14px;font-size:13px;display:flex;align-items:center;gap:9px;color:var(--text-dim);cursor:pointer}
 .dropdown-item:hover{background:var(--surface-3);color:var(--text)}
 .dropdown-item svg{width:15px;height:15px}
 .dropdown-divider{height:1px;background:var(--border-soft);margin:4px 0}
@@ -97,7 +103,7 @@ h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-.01em;font-weight:60
 .view-title{font-size:21px;font-weight:700}
 .view-subtitle{font-size:12.5px;color:var(--text-faint);margin-top:4px}
 .view-actions{display:flex;gap:10px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface-2);color:var(--text);transition:filter .12s}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface-2);color:var(--text);transition:filter .12s;cursor:pointer}
 .btn:hover{filter:brightness(1.12)}
 .btn svg{width:14px;height:14px}
 .btn-primary{background:var(--accent);color:#1a1206;border-color:var(--accent)}
@@ -106,7 +112,6 @@ h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-.01em;font-weight:60
 .btn-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
 .btn-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
 .btn-github{background:#24292e;color:#fff;border-color:#24292e}
-.btn-github:hover{background:#2f363d}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px}
@@ -161,7 +166,7 @@ tbody tr:hover{background:var(--surface-2)}
 .filters-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .filters-bar select,.filters-bar input[type="text"]{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12.5px}
 .tab-row{display:flex;gap:4px;border-bottom:1px solid var(--border-soft);margin-bottom:18px}
-.tab-btn{padding:9px 14px;font-size:13px;font-weight:600;color:var(--text-faint);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn{padding:9px 14px;font-size:13px;font-weight:600;color:var(--text-faint);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
 .tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 @media(max-width:900px){.kanban{grid-template-columns:1fr}}
@@ -186,7 +191,7 @@ tbody tr:hover{background:var(--surface-2)}
 .modal.wide{max-width:760px}
 .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border-soft)}
 .modal-head h3{font-size:15px}
-.modal-close{background:none;border:none;color:var(--text-faint);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.modal-close{background:none;border:none;color:var(--text-faint);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .modal-close:hover{background:var(--surface-2);color:var(--text)}
 .modal-body{padding:18px;max-height:70vh;overflow-y:auto}
 .modal-foot{padding:14px 18px;border-top:1px solid var(--border-soft);display:flex;justify-content:flex-end;gap:10px}
@@ -208,8 +213,6 @@ tbody tr:hover{background:var(--surface-2)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);flex-direction:column;gap:14px;z-index:1000}
 .loading-screen .brand-mark{width:42px;height:42px}
-.skeleton{background:linear-gradient(90deg,var(--surface-2),var(--surface-3),var(--surface-2));background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:6px}
-@keyframes shimmer{to{background-position:-200% 0}}
 .confirm-icon{width:40px;height:40px;border-radius:50%;background:rgba(229,72,77,.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
 .confirm-icon svg{width:20px;height:20px;color:var(--danger)}
 .auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -219,7 +222,7 @@ tbody tr:hover{background:var(--surface-2)}
 .auth-title{font-size:18px;font-weight:700;text-align:center}
 .auth-sub{font-size:12.5px;color:var(--text-faint);text-align:center;margin-top:3px}
 .auth-tabs{display:flex;background:var(--surface-2);border-radius:9px;padding:3px;margin-bottom:20px}
-.auth-tab{flex:1;text-align:center;padding:8px;font-size:12.5px;font-weight:600;border-radius:7px;color:var(--text-faint)}
+.auth-tab{flex:1;text-align:center;padding:8px;font-size:12.5px;font-weight:600;border-radius:7px;color:var(--text-faint);cursor:pointer}
 .auth-tab.active{background:var(--surface-3);color:var(--text)}
 .auth-link{font-size:12px;color:var(--blue);text-align:center;display:block;margin-top:14px}
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--text-faint);font-size:11px}
@@ -293,6 +296,87 @@ tbody tr:hover{background:var(--surface-2)}
 .export-section{border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px;margin-bottom:14px}
 .export-section h4{font-size:13px;font-weight:700;margin-bottom:10px}
 .img-preview-modal{max-width:90vw;max-height:80vh;border-radius:8px;object-fit:contain;display:block;margin:0 auto}
+
+/* =========================================================
+   CHAT LAYOUT
+   ========================================================= */
+.chat-layout{display:flex;height:100%;overflow:hidden}
+.chat-sidebar{width:260px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;overflow:hidden}
+.chat-sidebar-head{padding:14px 16px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
+.chat-sidebar-title{font-size:14px;font-weight:700}
+.chat-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);padding:12px 16px 6px;font-family:var(--font-mono)}
+.chat-room-list{flex:1;overflow-y:auto}
+.chat-room-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:2px solid transparent;position:relative}
+.chat-room-item:hover{background:var(--surface-2)}
+.chat-room-item.active{background:var(--surface-2);border-left-color:var(--accent)}
+.chat-room-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;font-weight:700}
+.chat-room-icon.group{background:linear-gradient(135deg,var(--blue),var(--purple));}
+.chat-room-icon.direct{background:linear-gradient(135deg,var(--teal),var(--success));}
+.chat-room-icon.admin{background:linear-gradient(135deg,var(--accent),var(--danger));}
+.chat-room-info{flex:1;min-width:0}
+.chat-room-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-room-preview{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.chat-room-unread{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#1a1206;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font-mono)}
+/* Chat main area */
+.chat-main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.chat-topbar{height:58px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--surface);flex-shrink:0}
+.chat-topbar-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
+.chat-topbar-icon.group{background:linear-gradient(135deg,var(--blue),var(--purple))}
+.chat-topbar-icon.direct{background:linear-gradient(135deg,var(--teal),var(--success))}
+.chat-topbar-icon.admin{background:linear-gradient(135deg,var(--accent),var(--danger))}
+.chat-topbar-info{flex:1}
+.chat-topbar-name{font-size:14px;font-weight:700}
+.chat-topbar-sub{font-size:11.5px;color:var(--text-faint)}
+.chat-topbar-actions{display:flex;gap:8px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:2px}
+.chat-messages-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--text-faint)}
+.chat-messages-empty svg{width:48px;height:48px;opacity:.3}
+/* Date separator */
+.chat-date-sep{display:flex;align-items:center;gap:10px;margin:16px 0 8px;color:var(--text-faint);font-size:11px;font-family:var(--font-mono)}
+.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+/* Message bubble */
+.chat-msg-group{display:flex;flex-direction:column;margin-bottom:2px}
+.chat-msg-group.mine{align-items:flex-end}
+.chat-msg-group.theirs{align-items:flex-start}
+.chat-msg-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:0 4px}
+.chat-msg-header .av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--blue));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#11141a;flex-shrink:0}
+.chat-msg-header .sender{font-size:12px;font-weight:700}
+.chat-msg-header .time{font-size:10.5px;color:var(--text-faint);font-family:var(--font-mono)}
+.chat-bubble{max-width:68%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word;position:relative}
+.chat-msg-group.mine .chat-bubble{background:var(--chat-mine);border-bottom-right-radius:4px;color:var(--text)}
+.chat-msg-group.theirs .chat-bubble{background:var(--chat-other);border-bottom-left-radius:4px;border:1px solid var(--border-soft)}
+.chat-bubble:hover .chat-bubble-actions{opacity:1;pointer-events:all}
+.chat-bubble-actions{position:absolute;top:-14px;right:8px;display:flex;gap:4px;opacity:0;pointer-events:none;transition:opacity .12s;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:8px;padding:3px 6px}
+.chat-msg-group.theirs .chat-bubble-actions{left:8px;right:auto}
+.chat-bubble-action-btn{background:none;border:none;color:var(--text-faint);font-size:12px;padding:1px 3px;border-radius:4px;cursor:pointer}
+.chat-bubble-action-btn:hover{color:var(--text);background:var(--surface-3)}
+/* Input area */
+.chat-input-area{padding:14px 20px;border-top:1px solid var(--border-soft);background:var(--surface);flex-shrink:0}
+.chat-reply-preview{background:var(--surface-2);border-left:3px solid var(--accent);border-radius:6px;padding:8px 10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;display:none}
+.chat-reply-preview.show{display:flex}
+.chat-reply-text{color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.chat-reply-cancel{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:16px;line-height:1;padding:0 0 0 8px}
+.chat-input-row{display:flex;gap:10px;align-items:flex-end}
+.chat-input-box{flex:1;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13.5px;resize:none;max-height:120px;min-height:42px;line-height:1.5;overflow-y:auto}
+.chat-input-box:focus{outline:none;border-color:var(--accent)}
+.chat-send-btn{width:40px;height:40px;border-radius:10px;background:var(--accent);border:none;color:#1a1206;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:filter .12s}
+.chat-send-btn:hover{filter:brightness(1.12)}
+.chat-send-btn svg{width:18px;height:18px}
+.chat-send-btn:disabled{opacity:.4;cursor:not-allowed}
+/* No room selected */
+.chat-no-room{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--text-faint)}
+.chat-no-room svg{width:56px;height:56px;opacity:.25}
+.chat-no-room .title{font-size:15px;font-weight:600;color:var(--text-dim)}
+/* Member chips in form */
+.member-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.member-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface-3);border:1px solid var(--border-soft);border-radius:20px;padding:3px 10px;font-size:12px}
+.member-chip button{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 4px}
+.member-chip button:hover{color:var(--danger)}
+/* Admin badge on chat room */
+.admin-lock-icon{font-size:12px;margin-left:auto;opacity:.6}
+/* Typing indicator */
+.chat-typing{height:22px;padding:0 20px;font-size:11.5px;color:var(--text-faint);font-style:italic}
+
 @media(max-width:880px){
   .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:150;transform:translateX(-100%);transition:transform .2s ease}
   .sidebar.show{transform:translateX(0);box-shadow:var(--shadow-2)}
@@ -302,16 +386,21 @@ tbody tr:hover{background:var(--surface-2)}
   .view-area{padding:18px 16px 50px}
   .form-row{grid-template-columns:1fr}
   .dash-grid{grid-template-columns:1fr}
+  .chat-sidebar{width:220px}
 }
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:140}
 .sidebar-backdrop.show{display:block}
 </style>
 </head>
 <body>
+
+<!-- LOADING -->
 <div class="loading-screen" id="initialLoader">
   <div class="brand-mark"></div>
   <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-faint);">Loading Team Workplace…</div>
 </div>
+
+<!-- AUTH -->
 <div class="auth-screen" id="authScreen" style="display:none;">
   <div class="auth-card">
     <div class="auth-brand"><div class="brand-mark"></div><div class="auth-title">Team Workplace</div><div class="auth-sub">Sign in to manage projects, tasks and issues</div></div>
@@ -330,20 +419,19 @@ tbody tr:hover{background:var(--surface-2)}
       <div class="form-hint" style="text-align:center;margin-top:12px;">First account created becomes workspace admin.</div>
     </form>
     <form id="resetForm" style="display:none;">
-      <div class="form-group"><label>Email</label><input type="email" id="resetEmail" required placeholder="you@company.com"><div class="form-hint">We'll send a password reset link to this address.</div><div class="form-error" id="resetError"></div></div>
+      <div class="form-group"><label>Email</label><input type="email" id="resetEmail" required placeholder="you@company.com"><div class="form-hint">We'll send a password reset link.</div><div class="form-error" id="resetError"></div></div>
       <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;" id="resetBtn"><span class="btn-label">Send reset link</span></button>
       <a class="auth-link" id="backToLoginLink" href="#">Back to sign in</a>
     </form>
     <div class="auth-divider">or continue with</div>
     <button type="button" class="btn btn-github" id="githubLoginBtn" style="width:100%;justify-content:center;">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="margin-right:8px;">
-        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.15 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.62.24 2.85.12 3.15.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-      </svg>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="margin-right:8px;"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.15 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.62.24 2.85.12 3.15.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
       Sign in with GitHub
     </button>
   </div>
 </div>
 
+<!-- MAIN APP -->
 <div id="app">
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <aside class="sidebar" id="sidebar">
@@ -356,6 +444,8 @@ tbody tr:hover{background:var(--surface-2)}
       <a class="nav-item" data-view="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Tasks</a>
       <a class="nav-item" data-view="issues"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>Issues<span class="badge-count" id="openIssuesBadge">0</span></a>
       <a class="nav-item" data-view="checkins"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Check-ins</a>
+      <div class="nav-section-label">Communicate</div>
+      <a class="nav-item" data-view="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat<span class="unread-dot" id="chatUnreadDot" style="display:none;"></span></a>
       <div class="nav-section-label">Code</div>
       <a class="nav-item" data-view="repositories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg>Repositories</a>
       <div class="nav-section-label">Resources</div>
@@ -395,6 +485,8 @@ tbody tr:hover{background:var(--surface-2)}
     <main class="view-area" id="viewArea"></main>
   </div>
 </div>
+
+<!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalBox">
     <div class="modal-head"><h3 id="modalTitle">Title</h3><button class="modal-close" id="modalCloseBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
@@ -402,313 +494,138 @@ tbody tr:hover{background:var(--surface-2)}
     <div class="modal-foot" id="modalFoot"></div>
   </div>
 </div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
-const SUPABASE_URL = "https://nemuhcjnuaszcbvhlbhz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lbXVoY2pudWFzemNidmhsYmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMTcxMzMsImV4cCI6MjA5NjU5MzEzM30.3I2ssXz4_g5qzQvwEf11vXSo1g63YEw-vdnZpjmOatQ";
-const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true}});
-const STORAGE_BUCKET = "files";
-const INACTIVITY_LIMIT_MS = 30*60*1000;
+const SUPABASE_URL="https://nemuhcjnuaszcbvhlbhz.supabase.co";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lbXVoY2pudWFzemNidmhsYmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMTcxMzMsImV4cCI6MjA5NjU5MzEzM30.3I2ssXz4_g5qzQvwEf11vXSo1g63YEw-vdnZpjmOatQ";
+const supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+const STORAGE_BUCKET="files";
+const INACTIVITY_LIMIT_MS=30*60*1000;
 
-const State = {
+const State={
   session:null,profile:null,profilesById:{},
   projects:[],projectMembers:[],tasks:[],issues:[],files:[],activities:[],
   milestones:[],checkIns:[],repositories:[],commits:[],branches:[],pullRequests:[],releases:[],repoFiles:[],
+  chatRooms:[],chatRoomMembers:[],chatMessages:{},
   taskComments:{},currentView:'dashboard',currentProjectId:null,currentRepoId:null,
-  charts:{},inactivityTimer:null,notifications:[]
+  currentChatRoomId:null,chatReplyTo:null,chatUnreadCounts:{},
+  charts:{},inactivityTimer:null,notifications:[],chatSubscription:null
 };
 
-const Util = {
+const Util={
   uuid(){return crypto.randomUUID()},
-  escapeHtml(str){if(str===null||str===undefined)return '';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))},
-  fmtDate(d){if(!d)return '—';const dt=new Date(d);if(isNaN(dt))return '—';return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})},
-  fmtDateTime(d){if(!d)return '—';const dt=new Date(d);if(isNaN(dt))return '—';return dt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})},
-  timeAgo(d){if(!d)return '';const sec=Math.floor((Date.now()-new Date(d).getTime())/1000);if(sec<60)return 'just now';const min=Math.floor(sec/60);if(min<60)return min+'m ago';const hr=Math.floor(min/60);if(hr<24)return hr+'h ago';const day=Math.floor(hr/24);if(day<30)return day+'d ago';return Util.fmtDate(d)},
-  fmtBytes(bytes){if(!bytes)return '0 B';const units=['B','KB','MB','GB'];let i=0,n=bytes;while(n>=1024&&i<units.length-1){n/=1024;i++}return n.toFixed(i===0?0:1)+' '+units[i]},
-  initials(name){if(!name)return '?';const parts=name.trim().split(/\s+/);return ((parts[0]?.[0]||'')+(parts[1]?.[0]||'')).toUpperCase()||name[0].toUpperCase()},
-  debounce(fn,ms){let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),ms)}},
+  escapeHtml(str){if(str===null||str===undefined)return'';return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))},
+  fmtDate(d){if(!d)return'—';const dt=new Date(d);if(isNaN(dt))return'—';return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})},
+  fmtDateTime(d){if(!d)return'—';const dt=new Date(d);if(isNaN(dt))return'—';return dt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})},
+  fmtTime(d){if(!d)return'';const dt=new Date(d);return dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})},
+  timeAgo(d){if(!d)return'';const sec=Math.floor((Date.now()-new Date(d).getTime())/1000);if(sec<60)return'just now';const min=Math.floor(sec/60);if(min<60)return min+'m ago';const hr=Math.floor(min/60);if(hr<24)return hr+'h ago';const day=Math.floor(hr/24);if(day<30)return day+'d ago';return Util.fmtDate(d)},
+  fmtBytes(b){if(!b)return'0 B';const u=['B','KB','MB','GB'];let i=0,n=b;while(n>=1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i===0?0:1)+' '+u[i]},
+  initials(name){if(!name)return'?';const p=name.trim().split(/\s+/);return((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase()||name[0].toUpperCase()},
+  debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}},
   userName(id){return State.profilesById[id]?.full_name||'Unknown'},
   qs(sel,root=document){return root.querySelector(sel)},
   qsa(sel,root=document){return Array.from(root.querySelectorAll(sel))},
-  shortHash(){return Math.random().toString(36).substr(2,7)},
+  isSameDay(d1,d2){const a=new Date(d1),b=new Date(d2);return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()},
+  formatMsgDate(d){const dt=new Date(d);const today=new Date();const yesterday=new Date(today);yesterday.setDate(today.getDate()-1);if(Util.isSameDay(dt,today))return'Today';if(Util.isSameDay(dt,yesterday))return'Yesterday';return dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})},
 };
 
-const UIModule = {
+const UIModule={
   toast(title,msg='',type='default'){
-    const el=document.createElement('div');
-    el.className='toast '+(type==='success'?'success':type==='error'?'error':'');
+    const el=document.createElement('div');el.className='toast '+(type==='success'?'success':type==='error'?'error':'');
     el.innerHTML=`<div class="tt">${Util.escapeHtml(title)}</div>${msg?`<div>${Util.escapeHtml(msg)}</div>`:''}`;
     Util.qs('#toastContainer').appendChild(el);
     setTimeout(()=>{el.style.transition='opacity .25s';el.style.opacity='0';setTimeout(()=>el.remove(),250)},4200);
   },
   openModal({title,bodyHtml,footHtml,wide=false}){
-    Util.qs('#modalTitle').textContent=title;
-    Util.qs('#modalBody').innerHTML=bodyHtml;
-    Util.qs('#modalFoot').innerHTML=footHtml||'';
-    Util.qs('#modalBox').classList.toggle('wide',wide);
-    Util.qs('#modalOverlay').classList.add('show');
+    Util.qs('#modalTitle').textContent=title;Util.qs('#modalBody').innerHTML=bodyHtml;Util.qs('#modalFoot').innerHTML=footHtml||'';
+    Util.qs('#modalBox').classList.toggle('wide',wide);Util.qs('#modalOverlay').classList.add('show');
   },
-  closeModal(){
-    Util.qs('#modalOverlay').classList.remove('show');
-    Util.qs('#modalBody').innerHTML='';
-    Util.qs('#modalFoot').innerHTML='';
-  },
+  closeModal(){Util.qs('#modalOverlay').classList.remove('show');Util.qs('#modalBody').innerHTML='';Util.qs('#modalFoot').innerHTML=''},
   confirm(message,onConfirm,opts={}){
     const danger=opts.danger!==false;
-    UIModule.openModal({
-      title:opts.title||'Are you sure?',
-      bodyHtml:`<div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></div><div style="font-size:13.5px;color:var(--text-dim);">${Util.escapeHtml(message)}</div>`,
-      footHtml:`<button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button><button class="btn ${danger?'btn-danger':'btn-primary'}" id="confirmOkBtn">${opts.confirmLabel||'Confirm'}</button>`
-    });
+    UIModule.openModal({title:opts.title||'Are you sure?',bodyHtml:`<div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg></div><div style="font-size:13.5px;color:var(--text-dim);">${Util.escapeHtml(message)}</div>`,footHtml:`<button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button><button class="btn ${danger?'btn-danger':'btn-primary'}" id="confirmOkBtn">${opts.confirmLabel||'Confirm'}</button>`});
     Util.qs('#confirmCancelBtn').onclick=UIModule.closeModal;
     Util.qs('#confirmOkBtn').onclick=async()=>{Util.qs('#confirmOkBtn').disabled=true;await onConfirm();UIModule.closeModal()};
   },
-  setBtnLoading(btn,loading,label){
-    if(!btn)return;btn.disabled=loading;
-    if(loading){btn.dataset.label=btn.innerHTML;btn.innerHTML=`<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span> ${label||'Working…'}`}
-    else if(btn.dataset.label){btn.innerHTML=btn.dataset.label}
-  },
+  setBtnLoading(btn,loading,label){if(!btn)return;btn.disabled=loading;if(loading){btn.dataset.label=btn.innerHTML;btn.innerHTML=`<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span> ${label||'Working…'}`}else if(btn.dataset.label){btn.innerHTML=btn.dataset.label}},
 };
 
-// =========================================================
-// OAUTH CALLBACK HANDLER - FIX
-// =========================================================
-async function handleOAuthCallback() {
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    console.log('🔄 Processing OAuth callback...');
-    try {
-      const { data, error } = await supa.auth.getSession();
-      if (error) throw error;
-      if (data.session) {
-        console.log('✅ OAuth login successful!');
-        window.history.replaceState({}, document.title, window.location.pathname);
-        UIModule.toast('✅ Successfully signed in with GitHub!', '', 'success');
-        State.session = data.session;
-        setTimeout(() => window.location.reload(), 1500);
-        return true;
-      }
-    } catch (err) {
-      console.error('❌ OAuth error:', err);
-      UIModule.toast('GitHub sign-in failed', err.message, 'error');
-    }
-  }
-  return false;
+async function handleOAuthCallback(){
+  const hash=window.location.hash;
+  if(hash&&hash.includes('access_token')){
+    try{const{data,error}=await supa.auth.getSession();if(error)throw error;if(data.session){window.history.replaceState({},document.title,window.location.pathname);State.session=data.session;setTimeout(()=>window.location.reload(),1500);return true}}
+    catch(err){UIModule.toast('GitHub sign-in failed',err.message,'error');return false}
+  }return false;
+}
+async function signInWithGithub(){
+  try{const{error}=await supa.auth.signInWithOAuth({provider:'github',options:{redirectTo:window.location.origin+window.location.pathname}});if(error)throw error}
+  catch(err){UIModule.toast('GitHub login failed',err.message,'error')}
 }
 
-async function signInWithGithub() {
-  try {
-    const { data, error } = await supa.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname,
-      },
-    });
-    if (error) throw error;
-  } catch (err) {
-    UIModule.toast('GitHub login failed', err.message, 'error');
-  }
-}
-
-// =========================================================
-// AUTH MODULE - UPDATED
-// =========================================================
-const AuthModule = {
-  async init() {
-    // Check for OAuth callback first
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      const handled = await handleOAuthCallback();
-      if (handled) {
-        Util.qs('#initialLoader').remove();
-        return;
-      }
-    }
-    
-    // Normal authentication flow
-    const { data } = await supa.auth.getSession();
-    State.session = data.session;
-    
-    supa.auth.onAuthStateChange((event, session) => {
-      State.session = session;
-      if (event === 'SIGNED_OUT') AuthModule.showAuthScreen();
-      if (event === 'SIGNED_IN') {
-        UIModule.toast('Signed in successfully!', '', 'success');
-        AuthModule.bootAfterLogin();
-      }
-    });
-    
-    if (State.session) {
-      await AuthModule.bootAfterLogin();
-    } else {
-      AuthModule.showAuthScreen();
-    }
+const AuthModule={
+  async init(){
+    const hash=window.location.hash;
+    if(hash&&hash.includes('access_token')){const handled=await handleOAuthCallback();if(handled){Util.qs('#initialLoader').remove();return}}
+    const{data}=await supa.auth.getSession();State.session=data.session;
+    supa.auth.onAuthStateChange((event,session)=>{State.session=session;if(event==='SIGNED_OUT')AuthModule.showAuthScreen();if(event==='SIGNED_IN'){UIModule.toast('Signed in!','','success');AuthModule.bootAfterLogin()}});
+    if(State.session)await AuthModule.bootAfterLogin();else AuthModule.showAuthScreen();
     Util.qs('#initialLoader').remove();
   },
-  
-  showAuthScreen() {
-    Util.qs('#app').classList.remove('ready');
-    Util.qs('#authScreen').style.display = 'flex';
-  },
-  
-  async bootAfterLogin() {
-    try {
-      await AuthModule.loadProfile();
-      Util.qs('#authScreen').style.display = 'none';
-      Util.qs('#app').classList.add('ready');
+  showAuthScreen(){Util.qs('#app').classList.remove('ready');Util.qs('#authScreen').style.display='flex'},
+  async bootAfterLogin(){
+    try{
+      await AuthModule.loadProfile();Util.qs('#authScreen').style.display='none';Util.qs('#app').classList.add('ready');
       AuthModule.resetInactivityTimer();
-      ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(e => 
-        document.addEventListener(e, AuthModule.resetInactivityTimer, { passive: true })
-      );
-      await DataModule.loadAll();
-      Router.navigate('dashboard');
-      ActivityModule.log('login', 'session', null, `${State.profile.full_name} signed in`);
-    } catch (err) {
-      console.error(err);
-      UIModule.toast('Could not load workspace', err.message, 'error');
+      ['mousemove','keydown','click','scroll','touchstart'].forEach(e=>document.addEventListener(e,AuthModule.resetInactivityTimer,{passive:true}));
+      await DataModule.loadAll();Router.navigate('dashboard');
+      ActivityModule.log('login','session',null,`${State.profile.full_name} signed in`);
+      ChatModule.subscribeRealtime();
+    }catch(err){console.error(err);UIModule.toast('Could not load workspace',err.message,'error')}
+  },
+  async loadProfile(){
+    const userId=State.session.user.id;
+    let{data:profile,error}=await supa.from('profiles').select('*').eq('id',userId).maybeSingle();if(error)throw error;
+    if(!profile){
+      const{count}=await supa.from('profiles').select('*',{count:'exact',head:true});
+      const role=(count===0)?'admin':'member';const meta=State.session.user.user_metadata||{};
+      const{data:created,error:insErr}=await supa.from('profiles').insert({id:userId,full_name:meta.full_name||State.session.user.email.split('@')[0],email:State.session.user.email,role}).select().single();
+      if(insErr)throw insErr;profile=created;
     }
+    State.profile=profile;
+    Util.qs('#userAvatar').textContent=Util.initials(profile.full_name);Util.qs('#userTriggerName').textContent=profile.full_name;
+    Util.qs('#ddUserName').textContent=profile.full_name;Util.qs('#ddUserEmail').textContent=profile.email;
+    Util.qs('#roleIndicator').textContent=profile.role;PermissionsModule.apply();
   },
-  
-  async loadProfile() {
-    const userId = State.session.user.id;
-    let { data: profile, error } = await supa.from('profiles').select('*').eq('id', userId).maybeSingle();
-    if (error) throw error;
-    if (!profile) {
-      const { count } = await supa.from('profiles').select('*', { count: 'exact', head: true });
-      const role = (count === 0) ? 'admin' : 'member';
-      const meta = State.session.user.user_metadata || {};
-      const { data: created, error: insErr } = await supa.from('profiles').insert({
-        id: userId,
-        full_name: meta.full_name || State.session.user.email.split('@')[0],
-        email: State.session.user.email,
-        role,
-      }).select().single();
-      if (insErr) throw insErr;
-      profile = created;
-    }
-    State.profile = profile;
-    Util.qs('#userAvatar').textContent = Util.initials(profile.full_name);
-    Util.qs('#userTriggerName').textContent = profile.full_name;
-    Util.qs('#ddUserName').textContent = profile.full_name;
-    Util.qs('#ddUserEmail').textContent = profile.email;
-    Util.qs('#roleIndicator').textContent = profile.role;
-    PermissionsModule.apply();
-  },
-  
-  resetInactivityTimer() {
-    clearTimeout(State.inactivityTimer);
-    State.inactivityTimer = setTimeout(async () => {
-      UIModule.toast('Session expired', 'Signed out after 30 min of inactivity.', 'error');
-      await AuthModule.logout();
-    }, INACTIVITY_LIMIT_MS);
-  },
-  
-  async login(email, password) {
-    const { error } = await supa.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    const { data } = await supa.auth.getSession();
-    State.session = data.session;
-    await AuthModule.bootAfterLogin();
-  },
-  
-  async signup(name, email, password) {
-    const { data, error } = await supa.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name } }
-    });
-    if (error) throw error;
-    if (data.session) {
-      State.session = data.session;
-      await AuthModule.bootAfterLogin();
-    } else {
-      UIModule.toast('Check your inbox', 'Confirm your email to continue.', 'success');
-      AuthScreenModule.switchTab('login');
-    }
-  },
-  
-  async resetPassword(email) {
-    const { error } = await supa.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.href,
-    });
-    if (error) throw error;
-  },
-  
-  async logout() {
-    if (State.profile) {
-      try {
-        await ActivityModule.log('logout', 'session', null, `${State.profile.full_name} signed out`);
-      } catch (e) {}
-    }
-    await supa.auth.signOut();
-    clearTimeout(State.inactivityTimer);
-    State.session = null;
-    State.profile = null;
-    Util.qs('#app').classList.remove('ready');
-    AuthModule.showAuthScreen();
-  }
+  resetInactivityTimer(){clearTimeout(State.inactivityTimer);State.inactivityTimer=setTimeout(async()=>{UIModule.toast('Session expired','Signed out after 30 min.','error');await AuthModule.logout()},INACTIVITY_LIMIT_MS)},
+  async login(email,password){const{error}=await supa.auth.signInWithPassword({email,password});if(error)throw error;const{data}=await supa.auth.getSession();State.session=data.session;await AuthModule.bootAfterLogin()},
+  async signup(name,email,password){const{data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)throw error;if(data.session){State.session=data.session;await AuthModule.bootAfterLogin()}else{UIModule.toast('Check your inbox','Confirm your email.','success');AuthScreenModule.switchTab('login')}},
+  async resetPassword(email){const{error}=await supa.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});if(error)throw error},
+  async logout(){if(State.profile){try{await ActivityModule.log('logout','session',null,`${State.profile.full_name} signed out`)}catch(e){}}await supa.auth.signOut();clearTimeout(State.inactivityTimer);State.session=null;State.profile=null;Util.qs('#app').classList.remove('ready');AuthModule.showAuthScreen()},
 };
 
-// =========================================================
-// AUTH SCREEN MODULE - UPDATED
-// =========================================================
-const AuthScreenModule = {
-  switchTab(tab){
-    Util.qsa('.auth-tab').forEach(t=>t.classList.toggle('active',t.dataset.authtab===tab));
-    Util.qs('#loginForm').style.display=tab==='login'?'block':'none';
-    Util.qs('#signupForm').style.display=tab==='signup'?'block':'none';
-    Util.qs('#resetForm').style.display='none';
-  },
+const AuthScreenModule={
+  switchTab(tab){Util.qsa('.auth-tab').forEach(t=>t.classList.toggle('active',t.dataset.authtab===tab));Util.qs('#loginForm').style.display=tab==='login'?'block':'none';Util.qs('#signupForm').style.display=tab==='signup'?'block':'none';Util.qs('#resetForm').style.display='none'},
   init(){
     Util.qsa('.auth-tab').forEach(t=>t.onclick=()=>AuthScreenModule.switchTab(t.dataset.authtab));
-    Util.qs('#loginForm').addEventListener('submit',async(e)=>{
-      e.preventDefault();const btn=Util.qs('#loginBtn');const errEl=Util.qs('#loginError');errEl.classList.remove('show');
-      UIModule.setBtnLoading(btn,true,'Signing in…');
-      try{await AuthModule.login(Util.qs('#loginEmail').value.trim(),Util.qs('#loginPassword').value)}
-      catch(err){errEl.textContent=err.message||'Could not sign in.';errEl.classList.add('show')}
-      finally{UIModule.setBtnLoading(btn,false)}
-    });
-    Util.qs('#signupForm').addEventListener('submit',async(e)=>{
-      e.preventDefault();const btn=Util.qs('#signupBtn');const errEl=Util.qs('#signupError');errEl.classList.remove('show');
-      const pass=Util.qs('#signupPassword').value;
-      if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return}
-      UIModule.setBtnLoading(btn,true,'Creating…');
-      try{await AuthModule.signup(Util.qs('#signupName').value.trim(),Util.qs('#signupEmail').value.trim(),pass)}
-      catch(err){errEl.textContent=err.message||'Could not create account.';errEl.classList.add('show')}
-      finally{UIModule.setBtnLoading(btn,false)}
-    });
-    Util.qs('#resetForm').addEventListener('submit',async(e)=>{
-      e.preventDefault();const btn=Util.qs('#resetBtn');const errEl=Util.qs('#resetError');errEl.classList.remove('show');
-      UIModule.setBtnLoading(btn,true,'Sending…');
-      try{await AuthModule.resetPassword(Util.qs('#resetEmail').value.trim());UIModule.toast('Reset link sent','Check your inbox.','success');AuthScreenModule.switchTab('login')}
-      catch(err){errEl.textContent=err.message;errEl.classList.add('show')}
-      finally{UIModule.setBtnLoading(btn,false)}
-    });
+    Util.qs('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const btn=Util.qs('#loginBtn');const errEl=Util.qs('#loginError');errEl.classList.remove('show');UIModule.setBtnLoading(btn,true,'Signing in…');try{await AuthModule.login(Util.qs('#loginEmail').value.trim(),Util.qs('#loginPassword').value)}catch(err){errEl.textContent=err.message||'Could not sign in.';errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}});
+    Util.qs('#signupForm').addEventListener('submit',async e=>{e.preventDefault();const btn=Util.qs('#signupBtn');const errEl=Util.qs('#signupError');errEl.classList.remove('show');const pass=Util.qs('#signupPassword').value;if(pass.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.classList.add('show');return}UIModule.setBtnLoading(btn,true,'Creating…');try{await AuthModule.signup(Util.qs('#signupName').value.trim(),Util.qs('#signupEmail').value.trim(),pass)}catch(err){errEl.textContent=err.message||'Could not create account.';errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}});
+    Util.qs('#resetForm').addEventListener('submit',async e=>{e.preventDefault();const btn=Util.qs('#resetBtn');const errEl=Util.qs('#resetError');errEl.classList.remove('show');UIModule.setBtnLoading(btn,true,'Sending…');try{await AuthModule.resetPassword(Util.qs('#resetEmail').value.trim());UIModule.toast('Reset link sent','Check your inbox.','success');AuthScreenModule.switchTab('login')}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}});
     Util.qs('#forgotLink').onclick=e=>{e.preventDefault();Util.qsa('.auth-tab').forEach(t=>t.classList.remove('active'));Util.qs('#loginForm').style.display='none';Util.qs('#signupForm').style.display='none';Util.qs('#resetForm').style.display='block'};
     Util.qs('#backToLoginLink').onclick=e=>{e.preventDefault();AuthScreenModule.switchTab('login')};
-
-    // GitHub Login Button - UPDATED
-    Util.qs('#githubLoginBtn').addEventListener('click', async () => {
-      await signInWithGithub();
-    });
+    Util.qs('#githubLoginBtn').addEventListener('click',async()=>{await signInWithGithub()});
   }
 };
 
-// =========================================================
-// PERMISSIONS MODULE
-// =========================================================
-const PermissionsModule = {
+const PermissionsModule={
   role(){return State.profile?.role||'viewer'},
   isAdmin(){return PermissionsModule.role()==='admin'},
-  canEdit(){return ['admin','member'].includes(PermissionsModule.role())},
+  canEdit(){return['admin','member'].includes(PermissionsModule.role())},
   apply(){document.body.classList.toggle('role-viewer',!PermissionsModule.canEdit())}
 };
 
-// =========================================================
-// DATA MODULE (partial - keep your existing data loading)
-// =========================================================
-const DataModule = {
+const DataModule={
   async loadAll(){
     const results=await Promise.all([
       supa.from('profiles').select('*'),
@@ -726,130 +643,48 @@ const DataModule = {
       supa.from('pull_requests').select('*').order('created_at',{ascending:false}),
       supa.from('releases').select('*').order('created_at',{ascending:false}),
       supa.from('repo_files').select('*').order('created_at',{ascending:false}),
+      supa.from('chat_rooms').select('*').order('created_at',{ascending:false}),
+      supa.from('chat_room_members').select('*'),
     ]);
     results.forEach(r=>{if(r.error)console.warn('Load error:',r.error.message)});
-    const [profiles,projects,members,tasks,issues,files,activities,milestones,checkIns,repos,commits,branches,prs,releases,repoFiles]=results;
-    State.profilesById={};
-    (profiles.data||[]).forEach(p=>State.profilesById[p.id]=p);
-    State.projects=projects.data||[];
-    State.projectMembers=members.data||[];
-    State.tasks=tasks.data||[];
-    State.issues=issues.data||[];
-    State.files=files.data||[];
-    State.activities=activities.data||[];
-    State.milestones=milestones.data||[];
-    State.checkIns=checkIns.data||[];
-    State.repositories=repos.data||[];
-    State.commits=commits.data||[];
-    State.branches=branches.data||[];
-    State.pullRequests=prs.data||[];
-    State.releases=releases.data||[];
-    State.repoFiles=repoFiles.data||[];
-    NotifModule.refresh();
-    Util.qs('#openIssuesBadge').textContent=State.issues.filter(i=>i.status==='open').length;
+    const[profiles,projects,members,tasks,issues,files,activities,milestones,checkIns,repos,commits,branches,prs,releases,repoFiles,chatRooms,chatRoomMembers]=results;
+    State.profilesById={};(profiles.data||[]).forEach(p=>State.profilesById[p.id]=p);
+    State.projects=projects.data||[];State.projectMembers=members.data||[];State.tasks=tasks.data||[];State.issues=issues.data||[];
+    State.files=files.data||[];State.activities=activities.data||[];State.milestones=milestones.data||[];State.checkIns=checkIns.data||[];
+    State.repositories=repos.data||[];State.commits=commits.data||[];State.branches=branches.data||[];
+    State.pullRequests=prs.data||[];State.releases=releases.data||[];State.repoFiles=repoFiles.data||[];
+    State.chatRooms=chatRooms.data||[];State.chatRoomMembers=chatRoomMembers.data||[];
+    NotifModule.refresh();Util.qs('#openIssuesBadge').textContent=State.issues.filter(i=>i.status==='open').length;
   },
   projectName(id){return State.projects.find(p=>p.id===id)?.name||'Unknown project'},
   repoName(id){return State.repositories.find(r=>r.id===id)?.name||'Unknown repo'},
 };
 
-// =========================================================
-// ACTIVITY MODULE
-// =========================================================
-const ActivityModule = {
+const ActivityModule={
   async log(action,entityType,entityId,description){
-    try{
-      const row={id:Util.uuid(),user_id:State.profile?.id||null,action,entity_type:entityType,entity_id:entityId,description,created_at:new Date().toISOString()};
-      const{error}=await supa.from('activities').insert(row);
-      if(error){console.warn('activity log failed',error.message);return}
-      State.activities.unshift(row);
-      if(State.currentView==='activity')ViewActivity.render();
-      if(State.currentView==='dashboard')ViewDashboard.renderActivityList();
-    }catch(e){console.warn(e)}
+    try{const row={id:Util.uuid(),user_id:State.profile?.id||null,action,entity_type:entityType,entity_id:entityId,description,created_at:new Date().toISOString()};const{error}=await supa.from('activities').insert(row);if(error){console.warn('activity log failed',error.message);return}State.activities.unshift(row);if(State.currentView==='activity')ViewActivity.render();if(State.currentView==='dashboard')ViewDashboard.renderActivityList()}catch(e){console.warn(e)}
   }
 };
 
-// =========================================================
-// NOTIFICATIONS
-// =========================================================
-const NotifModule = {
+const NotifModule={
   refresh(){
-    if(!State.profile)return;
-    const mine=[];
+    if(!State.profile)return;const mine=[];
     State.tasks.filter(t=>t.assigned_to===State.profile.id&&t.status!=='done').forEach(t=>mine.push({text:`Task assigned: ${t.title}`,time:t.created_at}));
     State.issues.filter(i=>i.assignee===State.profile.id&&i.status==='open').forEach(i=>mine.push({text:`Issue assigned: ${i.title}`,time:i.created_at}));
     State.pullRequests.filter(p=>p.reviewer_id===State.profile.id&&p.status==='open').forEach(p=>mine.push({text:`PR review needed: ${p.title}`,time:p.created_at}));
-    const today=new Date().toISOString().slice(0,10);
-    State.milestones.filter(m=>m.due_date===today&&m.status==='pending').forEach(m=>mine.push({text:`Milestone due today: ${m.title}`,time:m.due_date}));
-    mine.sort((a,b)=>new Date(b.time)-new Date(a.time));
-    State.notifications=mine.slice(0,10);
+    mine.sort((a,b)=>new Date(b.time)-new Date(a.time));State.notifications=mine.slice(0,10);
     Util.qs('#notifDot').style.display=State.notifications.length?'block':'none';
-    const list=Util.qs('#notifList');
-    if(!State.notifications.length){list.innerHTML=`<div class="search-empty">You're all caught up.</div>`}
+    const list=Util.qs('#notifList');if(!State.notifications.length){list.innerHTML=`<div class="search-empty">You're all caught up.</div>`}
     else{list.innerHTML=State.notifications.map(n=>`<div class="notif-item"><div class="nt">${Util.escapeHtml(n.text)}</div><div class="nm">${Util.timeAgo(n.time)}</div></div>`).join('')}
   }
 };
 
-// =========================================================
-// ROUTER
-// =========================================================
-const Router = {
-  navigate(view,params={}){
-    State.currentView=view;
-    State.currentProjectId=params.projectId||null;
-    State.currentRepoId=params.repoId||null;
-    Util.qsa('.nav-item[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
-    Util.qs('#sidebar').classList.remove('show');
-    Util.qs('#sidebarBackdrop').classList.remove('show');
-    const map={dashboard:ViewDashboard,projects:ViewProjects,'project-detail':ViewProjectDetail,tasks:ViewTasks,issues:ViewIssues,archive:ViewArchive,activity:ViewActivity,settings:ViewSettings,checkins:ViewCheckIns,export:ViewExport,repositories:ViewRepositories,'repo-detail':ViewRepoDetail};
-    (map[view]||ViewDashboard).render(params);
-    Util.qs('#viewArea').scrollTop=0;
-  }
+const ThemeModule={
+  init(){const saved=localStorage.getItem('twp_theme');ThemeModule.set(saved||'dark',true);Util.qs('#themeToggle').onclick=()=>ThemeModule.set(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light')},
+  set(mode,silent){if(mode==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');localStorage.setItem('twp_theme',mode);if(!silent&&State.currentView==='dashboard')ViewDashboard.renderCharts();const t=Util.qs('#settingsDarkToggle');if(t)t.checked=mode!=='light'}
 };
 
-// =========================================================
-// BOOT - UPDATED
-// =========================================================
-window.addEventListener('DOMContentLoaded', async () => {
-  ThemeModule.init();
-  AuthScreenModule.init();
-  wireNav();
-  SearchModule.init();
-  
-  // Check for OAuth callback
-  const hash = window.location.hash;
-  if (hash && hash.includes('access_token')) {
-    await handleOAuthCallback();
-  } else {
-    try {
-      await AuthModule.init();
-    } catch (err) {
-      console.error('Initialization error:', err);
-      Util.qs('#initialLoader').remove();
-      AuthModule.showAuthScreen();
-    }
-  }
-});
-
-// =========================================================
-// THEME
-// =========================================================
-const ThemeModule = {
-  init(){
-    const saved=localStorage.getItem('twp_theme');ThemeModule.set(saved||'dark',true);
-    Util.qs('#themeToggle').onclick=()=>ThemeModule.set(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');
-  },
-  set(mode,silent){
-    if(mode==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('twp_theme',mode);
-    if(!silent&&State.currentView==='dashboard')ViewDashboard.renderCharts();
-    const t=Util.qs('#settingsDarkToggle');if(t)t.checked=mode!=='light';
-  }
-};
-
-// =========================================================
-// GLOBAL SEARCH
-// =========================================================
-const SearchModule = {
+const SearchModule={
   init(){
     const input=Util.qs('#globalSearch');const resultsBox=Util.qs('#searchResults');
     input.addEventListener('input',Util.debounce(()=>SearchModule.run(input.value,resultsBox),150));
@@ -863,20 +698,703 @@ const SearchModule = {
     State.tasks.forEach(t=>{if(t.title.toLowerCase().includes(query))results.push({type:'task',label:t.title,sub:t.status,go:()=>Router.navigate('tasks')})});
     State.issues.forEach(i=>{if(i.title.toLowerCase().includes(query))results.push({type:'issue',label:i.title,sub:i.priority,go:()=>Router.navigate('issues')})});
     State.repositories.forEach(r=>{if(r.name.toLowerCase().includes(query))results.push({type:'repo',label:r.name,sub:r.description,go:()=>Router.navigate('repo-detail',{repoId:r.id})})});
-    State.commits.forEach(c=>{if(c.message.toLowerCase().includes(query))results.push({type:'commit',label:c.message,sub:c.hash,go:()=>Router.navigate('repo-detail',{repoId:c.repo_id})})});
+    State.chatRooms.forEach(r=>{if((r.name||'').toLowerCase().includes(query))results.push({type:'chat',label:r.name,sub:r.type,go:()=>{Router.navigate('chat');ChatModule.openRoom(r.id)}})});
     State.files.forEach(f=>{if(f.file_name.toLowerCase().includes(query))results.push({type:'file',label:f.file_name,sub:f.category,go:()=>Router.navigate('archive')})});
     if(!results.length){box.innerHTML=`<div class="search-empty">No results for "${Util.escapeHtml(query)}"</div>`}
-    else{
-      box.innerHTML=results.slice(0,15).map((r,idx)=>`<div class="search-result-item" data-ridx="${idx}"><span class="search-result-type">${r.type}</span><div><div style="font-size:12.5px;font-weight:600;">${Util.escapeHtml(r.label)}</div><div style="font-size:10.5px;color:var(--text-faint);">${Util.escapeHtml(String(r.sub||''))}</div></div></div>`).join('');
-      Util.qsa('.search-result-item',box).forEach((el,idx)=>el.onclick=()=>{results[idx].go();box.classList.remove('show');Util.qs('#globalSearch').value=''});
-    }
+    else{box.innerHTML=results.slice(0,15).map((r,idx)=>`<div class="search-result-item" data-ridx="${idx}"><span class="search-result-type">${r.type}</span><div><div style="font-size:12.5px;font-weight:600;">${Util.escapeHtml(r.label)}</div><div style="font-size:10.5px;color:var(--text-faint);">${Util.escapeHtml(String(r.sub||''))}</div></div></div>`).join('');Util.qsa('.search-result-item',box).forEach((el,idx)=>el.onclick=()=>{results[idx].go();box.classList.remove('show');Util.qs('#globalSearch').value=''})}
     box.classList.add('show');
   }
 };
 
 // =========================================================
-// NAV WIRING
+// CHAT MODULE
 // =========================================================
+const ChatModule={
+  // Determine which rooms the current user can see
+  visibleRooms(){
+    const isAdmin=PermissionsModule.isAdmin();
+    const uid=State.profile.id;
+    if(isAdmin) return State.chatRooms; // admins see all
+    // members see rooms where they are members (excluding admin-only rooms)
+    const myRoomIds=new Set(State.chatRoomMembers.filter(m=>m.user_id===uid).map(m=>m.room_id));
+    return State.chatRooms.filter(r=>r.type!=='admin'&&myRoomIds.has(r.id));
+  },
+
+  canAccessRoom(roomId){
+    const isAdmin=PermissionsModule.isAdmin();
+    if(isAdmin)return true;
+    const uid=State.profile.id;
+    return State.chatRoomMembers.some(m=>m.room_id===roomId&&m.user_id===uid);
+  },
+
+  isMemberOf(roomId){
+    return State.chatRoomMembers.some(m=>m.room_id===roomId&&m.user_id===State.profile.id);
+  },
+
+  roomMembers(roomId){
+    const ids=State.chatRoomMembers.filter(m=>m.room_id===roomId).map(m=>m.user_id);
+    return ids.map(id=>State.profilesById[id]).filter(Boolean);
+  },
+
+  // Get or find a DM room between two users
+  findDirectRoom(otherUserId){
+    const uid=State.profile.id;
+    return State.chatRooms.find(r=>{
+      if(r.type!=='direct')return false;
+      const members=State.chatRoomMembers.filter(m=>m.room_id===r.id).map(m=>m.user_id);
+      return members.includes(uid)&&members.includes(otherUserId)&&members.length===2;
+    });
+  },
+
+  async createRoom(payload,memberIds=[]){
+    const row={id:Util.uuid(),...payload,created_by:State.profile.id,created_at:new Date().toISOString()};
+    const{error}=await supa.from('chat_rooms').insert(row);if(error)throw error;
+    State.chatRooms.unshift(row);
+    // Add members
+    const membersToAdd=[...new Set([State.profile.id,...memberIds])];
+    if(row.type==='direct'&&membersToAdd.length===2){
+      // for DM just add both
+    } else if(row.type==='admin'){
+      // admin rooms: add all admins automatically
+      const admins=Object.values(State.profilesById).filter(p=>p.role==='admin').map(p=>p.id);
+      membersToAdd.push(...admins);
+    }
+    const uniqueMembers=[...new Set(membersToAdd)];
+    const memberRows=uniqueMembers.map(uid=>({id:Util.uuid(),room_id:row.id,user_id:uid,joined_at:new Date().toISOString()}));
+    const{error:mErr}=await supa.from('chat_room_members').insert(memberRows);
+    if(mErr)console.warn('member insert error',mErr.message);
+    State.chatRoomMembers.push(...memberRows);
+    return row;
+  },
+
+  async deleteRoom(roomId){
+    const{error}=await supa.from('chat_rooms').delete().eq('id',roomId);if(error)throw error;
+    State.chatRooms=State.chatRooms.filter(r=>r.id!==roomId);
+    State.chatRoomMembers=State.chatRoomMembers.filter(m=>m.room_id!==roomId);
+    delete State.chatMessages[roomId];
+    if(State.currentChatRoomId===roomId){State.currentChatRoomId=null;ViewChat.renderMain()}
+    ViewChat.renderRoomList();
+  },
+
+  async addMember(roomId,userId){
+    if(State.chatRoomMembers.some(m=>m.room_id===roomId&&m.user_id===userId))return;
+    const row={id:Util.uuid(),room_id:roomId,user_id:userId,joined_at:new Date().toISOString()};
+    const{error}=await supa.from('chat_room_members').insert(row);if(error)throw error;
+    State.chatRoomMembers.push(row);
+  },
+
+  async removeMember(roomId,userId){
+    const{error}=await supa.from('chat_room_members').delete().eq('room_id',roomId).eq('user_id',userId);if(error)throw error;
+    State.chatRoomMembers=State.chatRoomMembers.filter(m=>!(m.room_id===roomId&&m.user_id===userId));
+  },
+
+  async loadMessages(roomId){
+    const{data,error}=await supa.from('chat_messages').select('*').eq('room_id',roomId).order('created_at',{ascending:true}).limit(200);
+    if(error){console.warn('msg load error',error.message);return[]}
+    State.chatMessages[roomId]=data||[];
+    return State.chatMessages[roomId];
+  },
+
+  async sendMessage(roomId,content,replyTo=null){
+    const row={id:Util.uuid(),room_id:roomId,user_id:State.profile.id,content,reply_to:replyTo,created_at:new Date().toISOString()};
+    const{error}=await supa.from('chat_messages').insert(row);if(error)throw error;
+    if(!State.chatMessages[roomId])State.chatMessages[roomId]=[];
+    State.chatMessages[roomId].push(row);
+    return row;
+  },
+
+  async deleteMessage(msgId,roomId){
+    const{error}=await supa.from('chat_messages').delete().eq('id',msgId);if(error)throw error;
+    State.chatMessages[roomId]=(State.chatMessages[roomId]||[]).filter(m=>m.id!==msgId);
+    ViewChat.renderMessages(roomId);
+  },
+
+  async openRoom(roomId){
+    if(!ChatModule.canAccessRoom(roomId)){UIModule.toast('Access denied','You are not a member of this room.','error');return}
+    State.currentChatRoomId=roomId;
+    State.chatReplyTo=null;
+    State.chatUnreadCounts[roomId]=0;
+    ViewChat.updateUnreadBadges();
+    if(!State.chatMessages[roomId])await ChatModule.loadMessages(roomId);
+    ViewChat.renderRoomList();
+    ViewChat.renderMain();
+  },
+
+  async openDirectMessage(otherUserId){
+    if(otherUserId===State.profile.id){UIModule.toast('Cannot DM yourself','','error');return}
+    let room=ChatModule.findDirectRoom(otherUserId);
+    if(!room){
+      const other=State.profilesById[otherUserId];
+      room=await ChatModule.createRoom({name:`DM: ${State.profile.full_name} & ${other?.full_name||'User'}`,type:'direct'},[otherUserId]);
+      UIModule.toast('Conversation started','','success');
+    }
+    Router.navigate('chat');
+    await ChatModule.openRoom(room.id);
+  },
+
+  subscribeRealtime(){
+    if(State.chatSubscription)State.chatSubscription.unsubscribe();
+    State.chatSubscription=supa.channel('chat-realtime')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages'},payload=>{
+        const msg=payload.new;
+        if(!State.chatMessages[msg.room_id])State.chatMessages[msg.room_id]=[];
+        if(!State.chatMessages[msg.room_id].find(m=>m.id===msg.id)){
+          State.chatMessages[msg.room_id].push(msg);
+          if(msg.room_id===State.currentChatRoomId&&State.currentView==='chat'){
+            ViewChat.appendMessage(msg);
+          } else if(msg.user_id!==State.profile.id){
+            // unread
+            State.chatUnreadCounts[msg.room_id]=(State.chatUnreadCounts[msg.room_id]||0)+1;
+            ViewChat.updateUnreadBadges();
+            const room=State.chatRooms.find(r=>r.id===msg.room_id);
+            if(room)UIModule.toast(`New message in #${room.name||'chat'}`,String(msg.content).slice(0,60));
+          }
+          if(State.currentView==='chat'&&msg.room_id!==State.currentChatRoomId){
+            ViewChat.renderRoomList();
+          }
+        }
+      })
+      .on('postgres_changes',{event:'DELETE',schema:'public',table:'chat_messages'},payload=>{
+        const msg=payload.old;
+        if(State.chatMessages[msg.room_id]){
+          State.chatMessages[msg.room_id]=State.chatMessages[msg.room_id].filter(m=>m.id!==msg.id);
+          if(msg.room_id===State.currentChatRoomId&&State.currentView==='chat')ViewChat.renderMessages(msg.room_id);
+        }
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_rooms'},payload=>{
+        const r=payload.new;if(!State.chatRooms.find(x=>x.id===r.id)){State.chatRooms.unshift(r);if(State.currentView==='chat')ViewChat.renderRoomList()}
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_room_members'},payload=>{
+        const m=payload.new;if(!State.chatRoomMembers.find(x=>x.id===m.id)){State.chatRoomMembers.push(m);if(State.currentView==='chat')ViewChat.renderRoomList()}
+      })
+      .subscribe();
+  },
+
+  openCreateGroupForm(){
+    const isAdmin=PermissionsModule.isAdmin();
+    if(!isAdmin){UIModule.toast('Admin only','Only admins can create group rooms.','error');return}
+    const allMembers=Object.values(State.profilesById).filter(p=>p.id!==State.profile.id);
+    let selectedMembers=[];
+    UIModule.openModal({
+      title:'Create chat room',
+      bodyHtml:`
+        <div class="form-group"><label>Room name</label><input type="text" id="cr_name" placeholder="e.g. #frontend-team"></div>
+        <div class="form-group"><label>Type</label>
+          <select id="cr_type">
+            <option value="group">Group — invite specific members</option>
+            <option value="admin">Admin only — all admins auto-joined, private from members</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Linked project (optional)</label><select id="cr_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}">${Util.escapeHtml(p.name)}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Description</label><input type="text" id="cr_desc" placeholder="What is this room for?"></div>
+        <div id="cr_member_section" class="form-group">
+          <label>Add members</label>
+          <select id="cr_member_sel"><option value="">Select a member to add…</option>${allMembers.map(m=>`<option value="${m.id}">${Util.escapeHtml(m.full_name)} (${m.role})</option>`).join('')}</select>
+          <div class="member-chips" id="cr_chips"></div>
+        </div>
+        <div class="form-error" id="cr_error"></div>`,
+      footHtml:`<button class="btn btn-ghost" id="cr_cancel">Cancel</button><button class="btn btn-primary" id="cr_save">Create room</button>`
+    });
+    function refreshChips(){
+      const chips=Util.qs('#cr_chips');
+      chips.innerHTML=selectedMembers.map(uid=>{const m=State.profilesById[uid];return`<div class="member-chip"><span>${Util.escapeHtml(m?.full_name||uid)}</span><button data-rm="${uid}">×</button></div>`}).join('');
+      Util.qsa('[data-rm]',chips).forEach(b=>b.onclick=()=>{selectedMembers=selectedMembers.filter(id=>id!==b.dataset.rm);refreshChips()});
+    }
+    Util.qs('#cr_type').onchange=e=>{Util.qs('#cr_member_section').style.display=e.target.value==='admin'?'none':'block'};
+    Util.qs('#cr_member_sel').onchange=e=>{const v=e.target.value;if(v&&!selectedMembers.includes(v)){selectedMembers.push(v);refreshChips()}e.target.value=''};
+    Util.qs('#cr_cancel').onclick=UIModule.closeModal;
+    Util.qs('#cr_save').onclick=async()=>{
+      const name=Util.qs('#cr_name').value.trim();const errEl=Util.qs('#cr_error');
+      if(!name){errEl.textContent='Room name is required.';errEl.classList.add('show');return}
+      const type=Util.qs('#cr_type').value;
+      const btn=Util.qs('#cr_save');UIModule.setBtnLoading(btn,true,'Creating…');
+      try{
+        const room=await ChatModule.createRoom({name,type,project_id:Util.qs('#cr_project').value||null,description:Util.qs('#cr_desc').value.trim()},selectedMembers);
+        UIModule.closeModal();UIModule.toast(`#${name} created!`,'','success');
+        Router.navigate('chat');await ChatModule.openRoom(room.id);
+      }catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}
+    };
+  },
+
+  openManageMembers(roomId){
+    const room=State.chatRooms.find(r=>r.id===roomId);if(!room)return;
+    const current=ChatModule.roomMembers(roomId);
+    const allMembers=Object.values(State.profilesById).filter(p=>!current.find(c=>c.id===p.id));
+    UIModule.openModal({
+      title:`Manage members — #${Util.escapeHtml(room.name||'room')}`,
+      bodyHtml:`
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Current members (${current.length})</div>
+          ${current.map(m=>`<div class="member-row" style="padding:8px 0;">
+            <span class="avatar" style="width:28px;height:28px;font-size:11px;">${Util.initials(m.full_name)}</span>
+            <div class="member-info"><div class="member-name">${Util.escapeHtml(m.full_name)}</div><div class="member-email">${m.role}</div></div>
+            ${m.id!==State.profile.id?`<button class="btn btn-sm btn-ghost" style="color:var(--danger);" data-kickmember="${m.id}">Remove</button>`:'<span style="font-size:11px;color:var(--text-faint);">You</span>'}
+          </div>`).join('')}
+        </div>
+        ${allMembers.length?`<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Add members</div><select id="mm_addSel" style="width:100%;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:7px;padding:9px 11px;color:var(--text);"><option value="">Select member to add…</option>${allMembers.map(m=>`<option value="${m.id}">${Util.escapeHtml(m.full_name)} (${m.role})</option>`).join('')}</select></div>`:''}
+        <div class="form-error" id="mm_error"></div>`,
+      footHtml:`<button class="btn btn-ghost" id="mm_close">Close</button>`
+    });
+    Util.qs('#mm_close').onclick=UIModule.closeModal;
+    Util.qsa('[data-kickmember]').forEach(b=>b.onclick=async()=>{
+      try{await ChatModule.removeMember(roomId,b.dataset.kickmember);UIModule.closeModal();ChatModule.openManageMembers(roomId);UIModule.toast('Member removed','','success')}
+      catch(err){UIModule.toast('Error',err.message,'error')}
+    });
+    const addSel=Util.qs('#mm_addSel');
+    if(addSel)addSel.onchange=async e=>{const v=e.target.value;if(!v)return;try{await ChatModule.addMember(roomId,v);UIModule.closeModal();ChatModule.openManageMembers(roomId);UIModule.toast('Member added','','success')}catch(err){UIModule.toast('Error',err.message,'error')}};
+  },
+
+  startDMForm(){
+    const others=Object.values(State.profilesById).filter(p=>p.id!==State.profile.id);
+    UIModule.openModal({
+      title:'New direct message',
+      bodyHtml:`<div class="form-group"><label>Choose person</label><select id="dm_user"><option value="">Select…</option>${others.map(m=>`<option value="${m.id}">${Util.escapeHtml(m.full_name)} (${m.role})</option>`).join('')}</select></div><div class="form-error" id="dm_error"></div>`,
+      footHtml:`<button class="btn btn-ghost" id="dm_cancel">Cancel</button><button class="btn btn-primary" id="dm_start">Start conversation</button>`
+    });
+    Util.qs('#dm_cancel').onclick=UIModule.closeModal;
+    Util.qs('#dm_start').onclick=async()=>{
+      const v=Util.qs('#dm_user').value;const errEl=Util.qs('#dm_error');
+      if(!v){errEl.textContent='Select a person.';errEl.classList.add('show');return}
+      UIModule.closeModal();await ChatModule.openDirectMessage(v);
+    };
+  },
+};
+
+// =========================================================
+// CHAT VIEW
+// =========================================================
+const ViewChat={
+  render(){
+    const va=Util.qs('#viewArea');
+    va.style.padding='0';va.style.overflow='hidden';
+    va.innerHTML=`<div class="chat-layout" id="chatLayout">
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-head">
+          <div class="chat-sidebar-title">💬 Chat</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-ghost" id="chatNewDmBtn" title="New DM">✉</button>
+            ${PermissionsModule.isAdmin()?`<button class="btn btn-sm btn-primary" id="chatNewRoomBtn" title="New room">+</button>`:''}
+          </div>
+        </div>
+        <div class="chat-room-list" id="chatRoomList"></div>
+      </div>
+      <div class="chat-main" id="chatMain">
+        <div class="chat-no-room">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div class="title">Select a room or start a DM</div>
+          <div style="font-size:12.5px;">Pick a conversation from the left panel.</div>
+        </div>
+      </div>
+    </div>`;
+    Util.qs('#chatNewDmBtn').onclick=()=>ChatModule.startDMForm();
+    if(PermissionsModule.isAdmin())Util.qs('#chatNewRoomBtn').onclick=()=>ChatModule.openCreateGroupForm();
+    ViewChat.renderRoomList();
+    if(State.currentChatRoomId&&ChatModule.canAccessRoom(State.currentChatRoomId))ViewChat.renderMain();
+  },
+
+  renderRoomList(){
+    const listEl=Util.qs('#chatRoomList');if(!listEl)return;
+    const rooms=ChatModule.visibleRooms();
+    if(!rooms.length){listEl.innerHTML=`<div style="padding:20px 16px;font-size:12.5px;color:var(--text-faint);">${PermissionsModule.isAdmin()?'No rooms yet. Create one with +.':'No rooms yet. Ask an admin to add you.'}</div>`;return}
+    // Group by type
+    const groups={admin:[],group:[],direct:[]};
+    rooms.forEach(r=>{(groups[r.type]||groups.group).push(r)});
+    let html='';
+    if(groups.admin.length&&PermissionsModule.isAdmin()){
+      html+=`<div class="chat-section-label">🔒 Admin Private</div>`;
+      html+=groups.admin.map(r=>ViewChat.roomItemHtml(r)).join('');
+    }
+    if(groups.group.length){
+      html+=`<div class="chat-section-label">Channels</div>`;
+      html+=groups.group.map(r=>ViewChat.roomItemHtml(r)).join('');
+    }
+    if(groups.direct.length){
+      html+=`<div class="chat-section-label">Direct Messages</div>`;
+      html+=groups.direct.map(r=>ViewChat.roomItemHtml(r)).join('');
+    }
+    listEl.innerHTML=html;
+    Util.qsa('.chat-room-item',listEl).forEach(el=>{el.onclick=()=>ChatModule.openRoom(el.dataset.roomid)});
+  },
+
+  roomItemHtml(r){
+    const unread=State.chatUnreadCounts[r.id]||0;
+    const msgs=State.chatMessages[r.id]||[];
+    const lastMsg=msgs[msgs.length-1];
+    const isActive=State.currentChatRoomId===r.id;
+    let icon='',displayName=r.name||'Chat';
+    if(r.type==='direct'){
+      // show the other person's name
+      const otherMember=State.chatRoomMembers.filter(m=>m.room_id===r.id&&m.user_id!==State.profile.id)[0];
+      const otherProfile=otherMember?State.profilesById[otherMember.user_id]:null;
+      displayName=otherProfile?.full_name||r.name||'Direct';
+      icon=`<div class="chat-room-icon direct">${Util.initials(displayName)}</div>`;
+    } else if(r.type==='admin'){
+      icon=`<div class="chat-room-icon admin">🔒</div>`;
+    } else {
+      const letter=(r.name||'#')[0].toUpperCase();
+      icon=`<div class="chat-room-icon group">${letter}</div>`;
+    }
+    return `<div class="chat-room-item${isActive?' active':''}" data-roomid="${r.id}">
+      ${icon}
+      <div class="chat-room-info">
+        <div class="chat-room-name">${Util.escapeHtml(displayName)}</div>
+        <div class="chat-room-preview">${lastMsg?Util.escapeHtml(String(lastMsg.content).slice(0,35)):r.description||'No messages yet'}</div>
+      </div>
+      ${unread>0?`<div class="chat-room-unread">${unread}</div>`:''}
+    </div>`;
+  },
+
+  renderMain(){
+    const mainEl=Util.qs('#chatMain');if(!mainEl)return;
+    const roomId=State.currentChatRoomId;
+    if(!roomId){mainEl.innerHTML=`<div class="chat-no-room"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div class="title">Select a conversation</div></div>`;return}
+    const room=State.chatRooms.find(r=>r.id===roomId);if(!room)return;
+    const isAdmin=PermissionsModule.isAdmin();
+    const isMember=ChatModule.isMemberOf(roomId);
+    const canSend=isAdmin||isMember;
+    let displayName=room.name||'Chat';
+    if(room.type==='direct'){const om=State.chatRoomMembers.filter(m=>m.room_id===roomId&&m.user_id!==State.profile.id)[0];const op=om?State.profilesById[om.user_id]:null;displayName=op?.full_name||room.name||'Direct Message'}
+    const memberCount=ChatModule.roomMembers(roomId).length;
+    mainEl.innerHTML=`
+      <div class="chat-topbar">
+        <div class="chat-topbar-icon ${room.type}">${room.type==='direct'?Util.initials(displayName):room.type==='admin'?'🔒':(room.name||'#')[0].toUpperCase()}</div>
+        <div class="chat-topbar-info">
+          <div class="chat-topbar-name">${Util.escapeHtml(displayName)}</div>
+          <div class="chat-topbar-sub">${room.type==='direct'?'Direct message':`${room.type} · ${memberCount} member${memberCount!==1?'s':''}`}${room.description?` · ${Util.escapeHtml(room.description)}`:''}</div>
+        </div>
+        <div class="chat-topbar-actions">
+          ${(room.type!=='direct')&&isAdmin?`<button class="btn btn-sm btn-ghost" id="chatManageBtn">⚙ Members</button>`:''}
+          ${isAdmin?`<button class="btn btn-sm btn-ghost" id="chatDeleteRoomBtn" style="color:var(--danger);">Delete room</button>`:''}
+        </div>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-typing" id="chatTyping"></div>
+      <div class="chat-input-area">
+        <div class="chat-reply-preview" id="chatReplyPreview">
+          <span class="chat-reply-text" id="chatReplyText"></span>
+          <button class="chat-reply-cancel" id="chatReplyCancelBtn">×</button>
+        </div>
+        ${canSend?`<div class="chat-input-row">
+          <textarea class="chat-input-box" id="chatInput" placeholder="Message ${Util.escapeHtml(displayName)}…" rows="1"></textarea>
+          <button class="chat-send-btn" id="chatSendBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>`:`<div style="font-size:12.5px;color:var(--text-faint);text-align:center;padding:10px 0;">You are read-only in this room. Ask an admin to add you.</div>`}
+      </div>`;
+    if(Util.qs('#chatManageBtn'))Util.qs('#chatManageBtn').onclick=()=>ChatModule.openManageMembers(roomId);
+    if(Util.qs('#chatDeleteRoomBtn'))Util.qs('#chatDeleteRoomBtn').onclick=()=>UIModule.confirm(`Delete room "${room.name||'this room'}"? All messages will be lost.`,async()=>{await ChatModule.deleteRoom(roomId);UIModule.toast('Room deleted','','success')},{danger:true,confirmLabel:'Delete room'});
+    if(Util.qs('#chatReplyCancelBtn'))Util.qs('#chatReplyCancelBtn').onclick=()=>{State.chatReplyTo=null;Util.qs('#chatReplyPreview').classList.remove('show')};
+    if(canSend)ViewChat.wireInput(roomId);
+    ViewChat.renderMessages(roomId);
+  },
+
+  wireInput(roomId){
+    const input=Util.qs('#chatInput');const sendBtn=Util.qs('#chatSendBtn');if(!input||!sendBtn)return;
+    input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ViewChat.doSend(roomId)}});
+    input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,120)+'px';sendBtn.disabled=!input.value.trim()});
+    sendBtn.onclick=()=>ViewChat.doSend(roomId);
+    sendBtn.disabled=true;
+  },
+
+  async doSend(roomId){
+    const input=Util.qs('#chatInput');if(!input)return;
+    const content=input.value.trim();if(!content)return;
+    const replyTo=State.chatReplyTo;
+    input.value='';input.style.height='auto';Util.qs('#chatSendBtn').disabled=true;
+    State.chatReplyTo=null;const rp=Util.qs('#chatReplyPreview');if(rp)rp.classList.remove('show');
+    try{await ChatModule.sendMessage(roomId,content,replyTo)}
+    catch(err){UIModule.toast('Failed to send',err.message,'error');input.value=content}
+  },
+
+  renderMessages(roomId){
+    const wrap=Util.qs('#chatMessages');if(!wrap)return;
+    const msgs=State.chatMessages[roomId]||[];
+    if(!msgs.length){
+      wrap.innerHTML=`<div class="chat-messages-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div>No messages yet. Say hello!</div></div>`;
+      return;
+    }
+    const isAdmin=PermissionsModule.isAdmin();
+    let html='';let lastDate='';let lastSender='';let lastTime=0;
+    msgs.forEach((msg,idx)=>{
+      const msgDate=Util.formatMsgDate(msg.created_at);
+      if(msgDate!==lastDate){html+=`<div class="chat-date-sep">${Util.escapeHtml(msgDate)}</div>`;lastDate=msgDate;lastSender=''}
+      const isMine=msg.user_id===State.profile.id;
+      const side=isMine?'mine':'theirs';
+      const sender=State.profilesById[msg.user_id];
+      const senderName=sender?.full_name||'Unknown';
+      const thisTime=new Date(msg.created_at).getTime();
+      const showHeader=msg.user_id!==lastSender||thisTime-lastTime>300000;
+      lastSender=msg.user_id;lastTime=thisTime;
+      // Find reply
+      let replyHtml='';
+      if(msg.reply_to){const orig=msgs.find(m=>m.id===msg.reply_to);if(orig){const origSender=State.profilesById[orig.user_id]?.full_name||'User';replyHtml=`<div style="background:var(--surface-3);border-left:2px solid var(--accent);border-radius:4px;padding:4px 8px;margin-bottom:6px;font-size:11.5px;color:var(--text-faint);"><b style="color:var(--text-dim);">${Util.escapeHtml(origSender)}</b>: ${Util.escapeHtml(String(orig.content).slice(0,80))}</div>`}}
+      const canDel=isMine||isAdmin;
+      html+=`<div class="chat-msg-group ${side}" data-msgid="${msg.id}">
+        ${showHeader?`<div class="chat-msg-header">${!isMine?`<div class="av">${Util.initials(senderName)}</div>`:''}<span class="sender">${Util.escapeHtml(isMine?'You':senderName)}</span><span class="time">${Util.fmtTime(msg.created_at)}</span></div>`:''}
+        <div class="chat-bubble">
+          ${replyHtml}
+          ${Util.escapeHtml(msg.content).replace(/\n/g,'<br>')}
+          <div class="chat-bubble-actions">
+            <button class="chat-bubble-action-btn" data-reply="${msg.id}" title="Reply">↩</button>
+            ${canDel?`<button class="chat-bubble-action-btn" data-del="${msg.id}" title="Delete">🗑</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    });
+    wrap.innerHTML=html;
+    // Wire reply/delete
+    Util.qsa('[data-reply]',wrap).forEach(b=>b.onclick=()=>{
+      const msg=msgs.find(m=>m.id===b.dataset.reply);if(!msg)return;
+      State.chatReplyTo=msg.id;
+      const rp=Util.qs('#chatReplyPreview');const rt=Util.qs('#chatReplyText');
+      if(rp&&rt){rt.textContent=`Replying to ${State.profilesById[msg.user_id]?.full_name||'User'}: ${String(msg.content).slice(0,60)}`;rp.classList.add('show')}
+      Util.qs('#chatInput')?.focus();
+    });
+    Util.qsa('[data-del]',wrap).forEach(b=>b.onclick=()=>UIModule.confirm('Delete this message?',async()=>{await ChatModule.deleteMessage(b.dataset.del,roomId)},{danger:true,confirmLabel:'Delete'}));
+    wrap.scrollTop=wrap.scrollHeight;
+  },
+
+  appendMessage(msg){
+    const wrap=Util.qs('#chatMessages');if(!wrap)return;
+    // Clear empty state if present
+    const emptyEl=Util.qs('.chat-messages-empty',wrap);if(emptyEl)wrap.innerHTML='';
+    const isAdmin=PermissionsModule.isAdmin();
+    const isMine=msg.user_id===State.profile.id;
+    const side=isMine?'mine':'theirs';
+    const senderName=State.profilesById[msg.user_id]?.full_name||'User';
+    const canDel=isMine||isAdmin;
+    const msgs=State.chatMessages[State.currentChatRoomId]||[];
+    // Check if need date separator
+    const prev=msgs[msgs.length-2];
+    if(!prev||!Util.isSameDay(prev.created_at,msg.created_at)){
+      const sep=document.createElement('div');sep.className='chat-date-sep';sep.textContent=Util.formatMsgDate(msg.created_at);wrap.appendChild(sep);
+    }
+    const div=document.createElement('div');div.className=`chat-msg-group ${side}`;div.dataset.msgid=msg.id;
+    div.innerHTML=`<div class="chat-msg-header">${!isMine?`<div class="av">${Util.initials(senderName)}</div>`:''}<span class="sender">${Util.escapeHtml(isMine?'You':senderName)}</span><span class="time">${Util.fmtTime(msg.created_at)}</span></div>
+      <div class="chat-bubble">${Util.escapeHtml(msg.content).replace(/\n/g,'<br>')}
+        <div class="chat-bubble-actions">
+          <button class="chat-bubble-action-btn" data-reply="${msg.id}" title="Reply">↩</button>
+          ${canDel?`<button class="chat-bubble-action-btn" data-del="${msg.id}" title="Delete">🗑</button>`:''}
+        </div>
+      </div>`;
+    Util.qs('[data-reply]',div)?.addEventListener('click',()=>{
+      State.chatReplyTo=msg.id;const rp=Util.qs('#chatReplyPreview');const rt=Util.qs('#chatReplyText');
+      if(rp&&rt){rt.textContent=`Replying to ${State.profilesById[msg.user_id]?.full_name||'User'}: ${String(msg.content).slice(0,60)}`;rp.classList.add('show')}
+      Util.qs('#chatInput')?.focus();
+    });
+    Util.qs('[data-del]',div)?.addEventListener('click',()=>UIModule.confirm('Delete this message?',async()=>{await ChatModule.deleteMessage(msg.id,State.currentChatRoomId)},{danger:true,confirmLabel:'Delete'}));
+    wrap.appendChild(div);wrap.scrollTop=wrap.scrollHeight;
+    ViewChat.renderRoomList();
+  },
+
+  updateUnreadBadges(){
+    const total=Object.values(State.chatUnreadCounts).reduce((a,b)=>a+b,0);
+    Util.qs('#chatUnreadDot').style.display=total>0?'block':'none';
+    // update list items
+    Util.qsa('.chat-room-item').forEach(el=>{
+      const rid=el.dataset.roomid;const cnt=State.chatUnreadCounts[rid]||0;
+      let badge=el.querySelector('.chat-room-unread');
+      if(cnt>0){if(!badge){badge=document.createElement('div');badge.className='chat-room-unread';el.appendChild(badge)}badge.textContent=cnt}
+      else if(badge)badge.remove();
+    });
+  },
+};
+
+// Reset view area padding when leaving chat
+function resetViewArea(){Util.qs('#viewArea').style.padding='';Util.qs('#viewArea').style.overflow=''}
+
+// =========================================================
+// ALL OTHER VIEW MODULES (unchanged from original)
+// =========================================================
+const ViewDashboard={
+  render(){
+    resetViewArea();
+    const can=PermissionsModule.canEdit();
+    const totalProjects=State.projects.length,activeProjects=State.projects.filter(p=>p.status==='active').length,openIssues=State.issues.filter(i=>i.status==='open').length,fixedIssues=State.issues.filter(i=>i.status==='fixed').length,totalTasks=State.tasks.length,doneTasks=State.tasks.filter(t=>t.status==='done').length,teamSize=Object.keys(State.profilesById).length,openPRs=State.pullRequests.filter(p=>p.status==='open').length;
+    Util.qs('#viewArea').innerHTML=`
+      <div class="view-header"><div><div class="view-title">Dashboard</div><div class="view-subtitle">Welcome back, ${Util.escapeHtml(State.profile.full_name)}. Here's what's happening.</div></div>
+        <div class="view-actions">${can?`<button class="btn btn-primary" id="qaNewProject">+ New project</button><button class="btn btn-ghost" id="qaNewTask">+ New task</button><button class="btn btn-ghost" id="qaNewIssue">+ Report issue</button><button class="btn btn-ghost" id="qaCheckIn">✓ Check in</button>`:''}
+        ${can?`<button class="btn btn-teal" id="qaChat">💬 Open Chat</button>`:''}</div></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="sl">Total Projects</div><div class="sv">${totalProjects}</div></div>
+        <div class="stat-card"><div class="sl">Active Projects</div><div class="sv">${activeProjects}</div></div>
+        <div class="stat-card"><div class="sl">Open Issues</div><div class="sv">${openIssues}</div></div>
+        <div class="stat-card"><div class="sl">Fixed Issues</div><div class="sv">${fixedIssues}</div></div>
+        <div class="stat-card"><div class="sl">Total Tasks</div><div class="sv">${totalTasks}</div></div>
+        <div class="stat-card"><div class="sl">Completed Tasks</div><div class="sv">${doneTasks}</div></div>
+        <div class="stat-card"><div class="sl">Team Members</div><div class="sv">${teamSize}</div></div>
+        <div class="stat-card"><div class="sl">Open PRs</div><div class="sv">${openPRs}</div></div>
+      </div>
+      <div class="chart-row">
+        <div class="panel"><div class="panel-title">Task completion</div><div class="chart-box"><canvas id="chartTasks"></canvas></div></div>
+        <div class="panel"><div class="panel-title">Project status</div><div class="chart-box"><canvas id="chartProjects"></canvas></div></div>
+        <div class="panel"><div class="panel-title">Issue status</div><div class="chart-box"><canvas id="chartIssues"></canvas></div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="panel"><div class="panel-title">Project progress</div><div id="dashProjectProgress"></div></div>
+        <div class="panel"><div class="panel-title">Recent activity</div><div class="activity-list" id="dashActivityList"></div></div>
+      </div>`;
+    if(can){Util.qs('#qaNewProject').onclick=()=>ProjectModule.openForm();Util.qs('#qaNewTask').onclick=()=>TaskModule.openForm();Util.qs('#qaNewIssue').onclick=()=>IssueModule.openForm();Util.qs('#qaCheckIn').onclick=()=>CheckInModule.openForm()}
+    if(Util.qs('#qaChat'))Util.qs('#qaChat').onclick=()=>Router.navigate('chat');
+    ViewDashboard.renderProgress();ViewDashboard.renderActivityList();ViewDashboard.renderCharts();
+  },
+  renderProgress(){const wrap=Util.qs('#dashProjectProgress');if(!wrap)return;if(!State.projects.length){wrap.innerHTML=`<div class="empty-state"><div class="et">No projects yet</div></div>`;return}wrap.innerHTML=State.projects.slice(0,6).map(p=>{const pct=TaskModule.projectProgress(p.id);return`<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;"><span style="font-weight:600;">${Util.escapeHtml(p.name)}</span><span class="mono" style="color:var(--text-faint);">${pct}%</span></div><div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%;"></div></div></div>`}).join('')},
+  renderActivityList(){const wrap=Util.qs('#dashActivityList');if(!wrap)return;const items=State.activities.slice(0,8);if(!items.length){wrap.innerHTML=`<div class="empty-state"><div class="es">No activity yet.</div></div>`;return}wrap.innerHTML=items.map(a=>`<div class="activity-row"><div class="activity-dot"></div><div><div class="activity-text"><b>${Util.escapeHtml(Util.userName(a.user_id))}</b> ${Util.escapeHtml(a.description)}</div><div class="activity-time">${Util.timeAgo(a.created_at)}</div></div></div>`).join('')},
+  renderCharts(){Object.values(State.charts).forEach(c=>c&&c.destroy());const fontColor=getComputedStyle(document.body).getPropertyValue('--text-dim').trim();Chart.defaults.color=fontColor;Chart.defaults.font.family="'Inter',sans-serif";const done=State.tasks.filter(t=>t.status==='done').length,doing=State.tasks.filter(t=>t.status==='doing').length,todo=State.tasks.filter(t=>t.status==='todo').length;State.charts.tasks=new Chart(Util.qs('#chartTasks'),{type:'doughnut',data:{labels:['Todo','Doing','Done'],datasets:[{data:[todo,doing,done],backgroundColor:['#9aa4b2','#4c8bf5','#3fb37f'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,font:{size:11}}}},maintainAspectRatio:false}});const statuses=['planning','active','review','done'];const colors=['#9aa4b2','#4c8bf5','#e8a33d','#3fb37f'];State.charts.projects=new Chart(Util.qs('#chartProjects'),{type:'bar',data:{labels:statuses.map(s=>s[0].toUpperCase()+s.slice(1)),datasets:[{data:statuses.map(s=>State.projects.filter(p=>p.status===s).length),backgroundColor:colors,borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(154,164,178,0.1)'}},x:{grid:{display:false}}},maintainAspectRatio:false}});const open=State.issues.filter(i=>i.status==='open').length,fixed=State.issues.filter(i=>i.status==='fixed').length;State.charts.issues=new Chart(Util.qs('#chartIssues'),{type:'doughnut',data:{labels:['Open','Fixed'],datasets:[{data:[open,fixed],backgroundColor:['#e5484d','#3fb37f'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:12,font:{size:11}}}},maintainAspectRatio:false}})}
+};
+
+const ProjectModule={
+  async create(payload){const row={id:Util.uuid(),...payload,owner_id:State.profile.id,created_at:new Date().toISOString()};const{error}=await supa.from('projects').insert(row);if(error)throw error;State.projects.unshift(row);await ActivityModule.log('project_created','project',row.id,`created project "${row.name}"`);return row},
+  async update(id,payload){const{error}=await supa.from('projects').update(payload).eq('id',id);if(error)throw error;Object.assign(State.projects.find(p=>p.id===id),payload);await ActivityModule.log('project_updated','project',id,`updated project "${ProjectModule.get(id).name}"`)},
+  async remove(id){const proj=ProjectModule.get(id);const{error}=await supa.from('projects').delete().eq('id',id);if(error)throw error;State.projects=State.projects.filter(p=>p.id!==id);await ActivityModule.log('project_deleted','project',id,`deleted project "${proj?.name||''}"`)},
+  get(id){return State.projects.find(p=>p.id===id)},
+  openForm(existing){const isEdit=!!existing;UIModule.openModal({title:isEdit?'Edit project':'New project',bodyHtml:`<div class="form-group"><label>Project name</label><input type="text" id="pf_name" value="${Util.escapeHtml(existing?.name||'')}" placeholder="e.g. Website Redesign" required></div><div class="form-group"><label>Description</label><textarea id="pf_desc" placeholder="What is this project about?">${Util.escapeHtml(existing?.description||'')}</textarea></div><div class="form-row"><div class="form-group"><label>Status</label><select id="pf_status">${['planning','active','review','done'].map(s=>`<option value="${s}" ${existing?.status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}</select></div><div></div></div><div class="form-row"><div class="form-group"><label>Start date</label><input type="date" id="pf_start" value="${existing?.start_date||''}"></div><div class="form-group"><label>End date</label><input type="date" id="pf_end" value="${existing?.end_date||''}"></div></div><div class="form-error" id="pf_error"></div>`,footHtml:`<button class="btn btn-ghost" id="pf_cancel">Cancel</button><button class="btn btn-primary" id="pf_save">${isEdit?'Save changes':'Create project'}</button>`});Util.qs('#pf_cancel').onclick=UIModule.closeModal;Util.qs('#pf_save').onclick=async()=>{const name=Util.qs('#pf_name').value.trim();const errEl=Util.qs('#pf_error');if(!name){errEl.textContent='Project name is required.';errEl.classList.add('show');return}const payload={name,description:Util.qs('#pf_desc').value.trim(),status:Util.qs('#pf_status').value,start_date:Util.qs('#pf_start').value||null,end_date:Util.qs('#pf_end').value||null};const btn=Util.qs('#pf_save');UIModule.setBtnLoading(btn,true,'Saving…');try{if(isEdit)await ProjectModule.update(existing.id,payload);else await ProjectModule.create(payload);UIModule.closeModal();UIModule.toast(isEdit?'Project updated':'Project created',name,'success');Router.navigate('projects')}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}}
+};
+
+const ViewProjects={
+  state:{search:'',status:'all'},
+  render(){resetViewArea();const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Projects</div><div class="view-subtitle">${State.projects.length} project${State.projects.length===1?'':'s'}</div></div><div class="view-actions">${can?`<button class="btn btn-primary" id="newProjectBtn">+ New project</button>`:''}</div></div><div class="filters-bar"><input type="text" id="projSearch" placeholder="Search projects…" value="${ViewProjects.state.search}"><select id="projStatusFilter"><option value="all">All statuses</option>${['planning','active','review','done'].map(s=>`<option value="${s}">${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}</select></div><div id="projectsGrid" class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));"></div>`;
+    Util.qs('#projStatusFilter').value=ViewProjects.state.status;if(can)Util.qs('#newProjectBtn').onclick=()=>ProjectModule.openForm();
+    Util.qs('#projSearch').addEventListener('input',Util.debounce(e=>{ViewProjects.state.search=e.target.value;ViewProjects.renderGrid()},200));Util.qs('#projStatusFilter').onchange=e=>{ViewProjects.state.status=e.target.value;ViewProjects.renderGrid()};ViewProjects.renderGrid()},
+  renderGrid(){let list=State.projects.filter(p=>{const ms=!ViewProjects.state.search||p.name.toLowerCase().includes(ViewProjects.state.search.toLowerCase());const ss=ViewProjects.state.status==='all'||p.status===ViewProjects.state.status;return ms&&ss});const grid=Util.qs('#projectsGrid');if(!list.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><div class="et">No projects found</div></div>`;return}const can=PermissionsModule.canEdit();grid.innerHTML=list.map(p=>{const pct=TaskModule.projectProgress(p.id);return`<div class="panel row-link" style="margin-bottom:0;cursor:pointer;" data-projid="${p.id}"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;"><div style="font-weight:700;font-size:14.5px;">${Util.escapeHtml(p.name)}</div><span class="badge badge-${p.status}">${p.status}</span></div><div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;min-height:32px;">${Util.escapeHtml(p.description||'No description.')}</div><div class="progress-bar" style="margin-bottom:6px;"><div class="progress-bar-fill" style="width:${pct}%;"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);"><span class="mono">${pct}% complete</span><span class="mono">${Util.fmtDate(p.end_date)}</span></div>${can?`<div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-sm btn-ghost" data-edit="${p.id}">Edit</button><button class="btn btn-sm btn-ghost" data-del="${p.id}" style="color:var(--danger);">Delete</button></div>`:''}</div>`}).join('');Util.qsa('[data-projid]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-edit]')||e.target.closest('[data-del]'))return;Router.navigate('project-detail',{projectId:el.dataset.projid})}));Util.qsa('[data-edit]').forEach(el=>el.onclick=e=>{e.stopPropagation();ProjectModule.openForm(ProjectModule.get(el.dataset.edit))});Util.qsa('[data-del]').forEach(el=>el.onclick=e=>{e.stopPropagation();const proj=ProjectModule.get(el.dataset.del);UIModule.confirm(`Delete "${proj.name}"?`,async()=>{await ProjectModule.remove(proj.id);UIModule.toast('Project deleted',proj.name);ViewProjects.renderGrid()})})}
+};
+
+const TaskModule={
+  projectProgress(projectId){const list=State.tasks.filter(t=>t.project_id===projectId);if(!list.length)return 0;return Math.round((list.filter(t=>t.status==='done').length/list.length)*100)},
+  async create(payload){const row={id:Util.uuid(),...payload,created_at:new Date().toISOString()};const{error}=await supa.from('tasks').insert(row);if(error)throw error;State.tasks.unshift(row);await ActivityModule.log('task_created','task',row.id,`created task "${row.title}"`);if(row.assigned_to)await ActivityModule.log('task_assigned','task',row.id,`assigned task "${row.title}" to ${Util.userName(row.assigned_to)}`);NotifModule.refresh();return row},
+  async update(id,payload,opts={}){const{error}=await supa.from('tasks').update(payload).eq('id',id);if(error)throw error;const task=State.tasks.find(t=>t.id===id);Object.assign(task,payload);if(payload.status==='done'&&!opts.silent)await ActivityModule.log('task_completed','task',id,`marked task "${task.title}" as done`);else if(!opts.silent)await ActivityModule.log('task_updated','task',id,`updated task "${task.title}"`);NotifModule.refresh()},
+  async remove(id){const task=State.tasks.find(t=>t.id===id);const{error}=await supa.from('tasks').delete().eq('id',id);if(error)throw error;State.tasks=State.tasks.filter(t=>t.id!==id);await ActivityModule.log('task_deleted','task',id,`deleted task "${task?.title||''}"`)},
+  async addComment(taskId,text){const row={id:Util.uuid(),task_id:taskId,user_id:State.profile.id,comment:text,created_at:new Date().toISOString()};const{error}=await supa.from('task_comments').insert(row);if(error)throw error;const task=State.tasks.find(t=>t.id===taskId);await ActivityModule.log('comment_added','task',taskId,`commented on task "${task?.title||''}"`);return row},
+  async loadComments(taskId){const{data,error}=await supa.from('task_comments').select('*').eq('task_id',taskId).order('created_at',{ascending:true});if(error)return[];return data||[]},
+  openForm(existing,presetProjectId){const isEdit=!!existing;const members=Object.values(State.profilesById);UIModule.openModal({title:isEdit?'Edit task':'New task',bodyHtml:`<div class="form-group"><label>Title</label><input type="text" id="tf_title" value="${Util.escapeHtml(existing?.title||'')}" placeholder="e.g. Design landing page"></div><div class="form-group"><label>Description</label><textarea id="tf_desc" placeholder="Details">${Util.escapeHtml(existing?.description||'')}</textarea></div><div class="form-row"><div class="form-group"><label>Project</label><select id="tf_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}" ${(existing?.project_id||presetProjectId)===p.id?'selected':''}>${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div class="form-group"><label>Assigned to</label><select id="tf_assignee"><option value="">Unassigned</option>${members.map(m=>`<option value="${m.id}" ${existing?.assigned_to===m.id?'selected':''}>${Util.escapeHtml(m.full_name)}</option>`).join('')}</select></div></div><div class="form-row"><div class="form-group"><label>Due date</label><input type="date" id="tf_due" value="${existing?.due_date||''}"></div><div class="form-group"><label>Status</label><select id="tf_status">${['todo','doing','done'].map(s=>`<option value="${s}" ${existing?.status===s?'selected':''}>${s[0].toUpperCase()+s.slice(1)}</option>`).join('')}</select></div></div><div class="form-error" id="tf_error"></div>`,footHtml:`<button class="btn btn-ghost" id="tf_cancel">Cancel</button><button class="btn btn-primary" id="tf_save">${isEdit?'Save changes':'Create task'}</button>`});Util.qs('#tf_cancel').onclick=UIModule.closeModal;Util.qs('#tf_save').onclick=async()=>{const title=Util.qs('#tf_title').value.trim();const errEl=Util.qs('#tf_error');if(!title){errEl.textContent='Title is required.';errEl.classList.add('show');return}const payload={title,description:Util.qs('#tf_desc').value.trim(),project_id:Util.qs('#tf_project').value||null,assigned_to:Util.qs('#tf_assignee').value||null,due_date:Util.qs('#tf_due').value||null,status:Util.qs('#tf_status').value};const btn=Util.qs('#tf_save');UIModule.setBtnLoading(btn,true,'Saving…');try{if(isEdit)await TaskModule.update(existing.id,payload);else await TaskModule.create(payload);UIModule.closeModal();UIModule.toast(isEdit?'Task updated':'Task created',title,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}},
+  async openDetail(task){const comments=await TaskModule.loadComments(task.id);const can=PermissionsModule.canEdit();UIModule.openModal({title:task.title,wide:true,bodyHtml:`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><span class="badge badge-${task.status}">${task.status}</span>${task.project_id?`<span class="badge role-badge">${Util.escapeHtml(DataModule.projectName(task.project_id))}</span>`:''}${task.due_date?`<span class="badge role-badge">Due ${Util.fmtDate(task.due_date)}</span>`:''}</div><div style="font-size:13px;color:var(--text-dim);margin-bottom:18px;white-space:pre-wrap;">${Util.escapeHtml(task.description||'No description.')}</div><div style="font-size:12px;color:var(--text-faint);margin-bottom:18px;">Assigned to <b style="color:var(--text-dim);">${Util.escapeHtml(Util.userName(task.assigned_to))}</b></div><div class="panel-title" style="margin-bottom:8px;">Comments</div><div id="taskCommentsList">${comments.length?comments.map(c=>`<div class="comment-row"><div class="comment-body"><div class="comment-meta"><b>${Util.escapeHtml(Util.userName(c.user_id))}</b> · ${Util.timeAgo(c.created_at)}</div><div class="comment-text">${Util.escapeHtml(c.comment)}</div></div></div>`).join(''):`<div class="empty-state" style="padding:20px;"><div class="es">No comments yet.</div></div>`}</div>${can?`<div style="display:flex;gap:8px;margin-top:14px;"><input type="text" id="newCommentInput" placeholder="Add a comment…" style="flex:1;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:7px;padding:8px 11px;color:var(--text);"><button class="btn btn-primary btn-sm" id="addCommentBtn">Post</button></div>`:''}`,footHtml:can?`<button class="btn btn-ghost" id="taskEditBtn">Edit task</button><button class="btn btn-danger" id="taskDeleteBtn">Delete</button>`:''});if(can){Util.qs('#addCommentBtn').onclick=async()=>{const input=Util.qs('#newCommentInput');const text=input.value.trim();if(!text)return;await TaskModule.addComment(task.id,text);UIModule.closeModal();TaskModule.openDetail(task)};Util.qs('#taskEditBtn').onclick=()=>{UIModule.closeModal();TaskModule.openForm(task)};Util.qs('#taskDeleteBtn').onclick=()=>UIModule.confirm(`Delete task "${task.title}"?`,async()=>{await TaskModule.remove(task.id);UIModule.toast('Task deleted',task.title);Router.navigate(State.currentView,{projectId:State.currentProjectId})})}},
+  renderKanban(container,list){const can=PermissionsModule.canEdit();const cols=[['todo','To do'],['doing','Doing'],['done','Done']];container.innerHTML=`<div class="kanban">${cols.map(([key,label])=>`<div class="kanban-col" data-status="${key}"><div class="kanban-col-title">${label} <span class="mono">${list.filter(t=>t.status===key).length}</span></div><div class="kanban-cards" data-status-list="${key}">${list.filter(t=>t.status===key).map(t=>TaskModule.cardHtml(t)).join('')||`<div style="font-size:11.5px;color:var(--text-faint);padding:8px 2px;">No tasks</div>`}</div></div>`).join('')}</div>`;Util.qsa('.task-card',container).forEach(card=>{card.onclick=()=>{const t=State.tasks.find(t=>t.id===card.dataset.taskid);if(t)TaskModule.openDetail(t)};if(can){card.draggable=true;card.addEventListener('dragstart',()=>card.classList.add('dragging'));card.addEventListener('dragend',()=>card.classList.remove('dragging'))}});if(can){Util.qsa('.kanban-col',container).forEach(col=>{col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drag-over')});col.addEventListener('dragleave',()=>col.classList.remove('drag-over'));col.addEventListener('drop',async e=>{e.preventDefault();col.classList.remove('drag-over');const dragging=Util.qsa('.task-card.dragging',container)[0];if(!dragging)return;const taskId=dragging.dataset.taskid;const newStatus=col.dataset.status;const task=State.tasks.find(t=>t.id===taskId);if(task.status===newStatus)return;try{await TaskModule.update(taskId,{status:newStatus});UIModule.toast('Task moved',`"${task.title}" → ${newStatus}`,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){UIModule.toast('Could not move task',err.message,'error')}})})}},
+  cardHtml(t){return`<div class="task-card" data-taskid="${t.id}"><div class="task-card-title">${Util.escapeHtml(t.title)}</div><div class="task-card-meta"><span>${t.due_date?Util.fmtDate(t.due_date):'No due date'}</span>${t.assigned_to?`<span class="task-card-avatar" title="${Util.escapeHtml(Util.userName(t.assigned_to))}">${Util.initials(Util.userName(t.assigned_to))}</span>`:''}</div></div>`}
+};
+
+const ViewTasks={
+  state:{search:'',status:'all',project:'all'},
+  render(){resetViewArea();const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Tasks</div><div class="view-subtitle">${State.tasks.length} tasks</div></div><div class="view-actions">${can?`<button class="btn btn-primary" id="newTaskBtn">+ New task</button>`:''}</div></div><div class="filters-bar"><input type="text" id="taskSearch" placeholder="Search tasks…" value="${ViewTasks.state.search}"><select id="taskStatusFilter"><option value="all">All statuses</option><option value="todo">To do</option><option value="doing">Doing</option><option value="done">Done</option></select><select id="taskProjectFilter"><option value="all">All projects</option>${State.projects.map(p=>`<option value="${p.id}">${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div id="tasksKanbanWrap"></div>`;if(can)Util.qs('#newTaskBtn').onclick=()=>TaskModule.openForm();Util.qs('#taskStatusFilter').value=ViewTasks.state.status;Util.qs('#taskProjectFilter').value=ViewTasks.state.project;Util.qs('#taskSearch').addEventListener('input',Util.debounce(e=>{ViewTasks.state.search=e.target.value;ViewTasks.renderList()},200));Util.qs('#taskStatusFilter').onchange=e=>{ViewTasks.state.status=e.target.value;ViewTasks.renderList()};Util.qs('#taskProjectFilter').onchange=e=>{ViewTasks.state.project=e.target.value;ViewTasks.renderList()};ViewTasks.renderList()},
+  renderList(){let list=State.tasks.filter(t=>{const s=ViewTasks.state;return(!s.search||t.title.toLowerCase().includes(s.search.toLowerCase()))&&(s.status==='all'||t.status===s.status)&&(s.project==='all'||t.project_id===s.project)});TaskModule.renderKanban(Util.qs('#tasksKanbanWrap'),list)}
+};
+
+const IssueModule={
+  async create(payload){const row={id:Util.uuid(),...payload,reporter:State.profile.id,status:'open',created_at:new Date().toISOString()};const{error}=await supa.from('issues').insert(row);if(error)throw error;State.issues.unshift(row);await ActivityModule.log('issue_created','issue',row.id,`reported issue "${row.title}"`);Util.qs('#openIssuesBadge').textContent=State.issues.filter(i=>i.status==='open').length;NotifModule.refresh();return row},
+  async update(id,payload){const{error}=await supa.from('issues').update(payload).eq('id',id);if(error)throw error;const issue=State.issues.find(i=>i.id===id);Object.assign(issue,payload);Util.qs('#openIssuesBadge').textContent=State.issues.filter(i=>i.status==='open').length;NotifModule.refresh()},
+  async fix(id,notes){await IssueModule.update(id,{status:'fixed',solution_notes:notes,fixed_date:new Date().toISOString()});const issue=State.issues.find(i=>i.id===id);await ActivityModule.log('issue_fixed','issue',id,`marked issue "${issue.title}" as fixed`)},
+  async remove(id){const issue=State.issues.find(i=>i.id===id);const{error}=await supa.from('issues').delete().eq('id',id);if(error)throw error;State.issues=State.issues.filter(i=>i.id!==id);Util.qs('#openIssuesBadge').textContent=State.issues.filter(i=>i.status==='open').length;await ActivityModule.log('issue_deleted','issue',id,`deleted issue "${issue?.title||''}"`)},
+  openForm(existing,presetProjectId){const isEdit=!!existing;const members=Object.values(State.profilesById);UIModule.openModal({title:isEdit?'Edit issue':'Report issue',bodyHtml:`<div class="form-group"><label>Title</label><input type="text" id="if_title" value="${Util.escapeHtml(existing?.title||'')}" placeholder="e.g. Login button not working"></div><div class="form-group"><label>Description</label><textarea id="if_desc" placeholder="Describe the issue">${Util.escapeHtml(existing?.description||'')}</textarea></div><div class="form-row"><div class="form-group"><label>Project</label><select id="if_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}" ${(existing?.project_id||presetProjectId)===p.id?'selected':''}>${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div class="form-group"><label>Assignee</label><select id="if_assignee"><option value="">Unassigned</option>${members.map(m=>`<option value="${m.id}" ${existing?.assignee===m.id?'selected':''}>${Util.escapeHtml(m.full_name)}</option>`).join('')}</select></div></div><div class="form-group"><label>Priority</label><select id="if_priority">${['low','medium','high','critical'].map(p=>`<option value="${p}" ${existing?.priority===p?'selected':''}>${p[0].toUpperCase()+p.slice(1)}</option>`).join('')}</select></div><div class="form-error" id="if_error"></div>`,footHtml:`<button class="btn btn-ghost" id="if_cancel">Cancel</button><button class="btn btn-primary" id="if_save">${isEdit?'Save changes':'Report issue'}</button>`});Util.qs('#if_cancel').onclick=UIModule.closeModal;Util.qs('#if_save').onclick=async()=>{const title=Util.qs('#if_title').value.trim();const errEl=Util.qs('#if_error');if(!title){errEl.textContent='Title is required.';errEl.classList.add('show');return}const payload={title,description:Util.qs('#if_desc').value.trim(),project_id:Util.qs('#if_project').value||null,assignee:Util.qs('#if_assignee').value||null,priority:Util.qs('#if_priority').value};const btn=Util.qs('#if_save');UIModule.setBtnLoading(btn,true,'Saving…');try{if(isEdit)await IssueModule.update(existing.id,payload);else await IssueModule.create(payload);UIModule.closeModal();UIModule.toast(isEdit?'Issue updated':'Issue reported',title,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}},
+  openFixForm(issue){UIModule.openModal({title:`Resolve "${issue.title}"`,bodyHtml:`<div class="form-group"><label>Solution notes</label><textarea id="fx_notes" placeholder="Describe how this was resolved…"></textarea></div><div class="form-error" id="fx_error"></div>`,footHtml:`<button class="btn btn-ghost" id="fx_cancel">Cancel</button><button class="btn btn-primary" id="fx_save">Mark as fixed</button>`});Util.qs('#fx_cancel').onclick=UIModule.closeModal;Util.qs('#fx_save').onclick=async()=>{const notes=Util.qs('#fx_notes').value.trim();const errEl=Util.qs('#fx_error');if(!notes){errEl.textContent='Add a resolution note.';errEl.classList.add('show');return}const btn=Util.qs('#fx_save');UIModule.setBtnLoading(btn,true,'Saving…');try{await IssueModule.fix(issue.id,notes);UIModule.closeModal();UIModule.toast('Issue fixed',issue.title,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}},
+  renderTable(container,list){const can=PermissionsModule.canEdit();if(!list.length){container.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg><div class="et">No issues found</div></div>`;return}container.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Issue</th><th>Project</th><th>Priority</th><th>Status</th><th>Assignee</th><th>Reported</th><th></th></tr></thead><tbody>${list.map(i=>`<tr><td><div class="cell-name">${Util.escapeHtml(i.title)}</div><div class="cell-sub">${Util.escapeHtml((i.description||'').slice(0,60))}</div></td><td>${i.project_id?Util.escapeHtml(DataModule.projectName(i.project_id)):'—'}</td><td><span class="badge badge-${i.priority}">${i.priority}</span></td><td><span class="badge badge-${i.status}">${i.status}</span></td><td>${Util.escapeHtml(Util.userName(i.assignee))}</td><td class="mono" style="font-size:11.5px;">${Util.fmtDate(i.created_at)}</td><td style="white-space:nowrap;">${can?`${i.status==='open'?`<button class="btn btn-sm btn-ghost" data-fix="${i.id}">Fix</button>`:''}<button class="btn btn-sm btn-ghost" data-editissue="${i.id}">Edit</button><button class="btn btn-sm btn-ghost" data-delissue="${i.id}" style="color:var(--danger);">Delete</button>`:'—'}</td></tr>`).join('')}</tbody></table></div>`;Util.qsa('[data-fix]',container).forEach(b=>b.onclick=()=>IssueModule.openFixForm(list.find(i=>i.id===b.dataset.fix)));Util.qsa('[data-editissue]',container).forEach(b=>b.onclick=()=>IssueModule.openForm(list.find(i=>i.id===b.dataset.editissue)));Util.qsa('[data-delissue]',container).forEach(b=>b.onclick=()=>{const issue=list.find(i=>i.id===b.dataset.delissue);UIModule.confirm(`Delete issue "${issue.title}"?`,async()=>{await IssueModule.remove(issue.id);UIModule.toast('Issue deleted',issue.title);Router.navigate(State.currentView,{projectId:State.currentProjectId})})})}
+};
+
+const ViewIssues={
+  state:{search:'',priority:'all',tab:'open'},
+  render(){resetViewArea();const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Issues</div><div class="view-subtitle">Track problems from report through resolution</div></div><div class="view-actions">${can?`<button class="btn btn-primary" id="newIssueBtn">+ Report issue</button>`:''}</div></div><div class="tab-row"><div class="tab-btn ${ViewIssues.state.tab==='open'?'active':''}" data-itab="open">Open issues</div><div class="tab-btn ${ViewIssues.state.tab==='fixed'?'active':''}" data-itab="fixed">Fixed archive</div></div><div class="filters-bar"><input type="text" id="issueSearch" placeholder="Search issues…" value="${ViewIssues.state.search}"><select id="issuePriorityFilter"><option value="all">All priorities</option>${['low','medium','high','critical'].map(p=>`<option value="${p}">${p[0].toUpperCase()+p.slice(1)}</option>`).join('')}</select></div><div id="issuesTableWrap"></div>`;if(can)Util.qs('#newIssueBtn').onclick=()=>IssueModule.openForm();Util.qsa('[data-itab]').forEach(t=>t.onclick=()=>{ViewIssues.state.tab=t.dataset.itab;ViewIssues.render()});Util.qs('#issuePriorityFilter').value=ViewIssues.state.priority;Util.qs('#issueSearch').addEventListener('input',Util.debounce(e=>{ViewIssues.state.search=e.target.value;ViewIssues.renderList()},200));Util.qs('#issuePriorityFilter').onchange=e=>{ViewIssues.state.priority=e.target.value;ViewIssues.renderList()};ViewIssues.renderList()},
+  renderList(){let list=State.issues.filter(i=>{const s=ViewIssues.state;return i.status===s.tab&&(!s.search||i.title.toLowerCase().includes(s.search.toLowerCase()))&&(s.priority==='all'||i.priority===s.priority)});IssueModule.renderTable(Util.qs('#issuesTableWrap'),list)}
+};
+
+const CheckInModule={
+  async create(payload){const row={id:Util.uuid(),...payload,user_id:State.profile.id,created_at:new Date().toISOString()};const{error}=await supa.from('check_ins').insert(row);if(error)throw error;State.checkIns.unshift(row);await ActivityModule.log('checkin','checkin',row.id,`submitted a daily check-in`);return row},
+  todayCheckin(){const today=new Date().toISOString().slice(0,10);return State.checkIns.find(c=>c.user_id===State.profile.id&&c.date===today)},
+  openForm(){const today=new Date().toISOString().slice(0,10);const existing=CheckInModule.todayCheckin();UIModule.openModal({title:existing?'Today\'s check-in (already submitted)':'Daily check-in',bodyHtml:`<div style="font-size:12px;color:var(--text-faint);margin-bottom:16px;font-family:var(--font-mono);">${today}</div><div class="form-group"><label>What did you work on yesterday?</label><textarea id="ci_yesterday" placeholder="Describe what you accomplished…" ${existing?'disabled':''}>${Util.escapeHtml(existing?.yesterday||'')}</textarea></div><div class="form-group"><label>What are you working on today?</label><textarea id="ci_today" placeholder="Today's focus…" ${existing?'disabled':''}>${Util.escapeHtml(existing?.today||'')}</textarea></div><div class="form-group"><label>Any blockers?</label><textarea id="ci_blockers" placeholder="Anything blocking your progress? (optional)" ${existing?'disabled':''}>${Util.escapeHtml(existing?.blockers||'')}</textarea></div><div class="form-error" id="ci_error"></div>`,footHtml:existing?`<button class="btn btn-ghost" id="ci_close">Close</button>`:`<button class="btn btn-ghost" id="ci_cancel">Cancel</button><button class="btn btn-primary" id="ci_save">Submit check-in</button>`});if(existing){Util.qs('#ci_close').onclick=UIModule.closeModal;return}Util.qs('#ci_cancel').onclick=UIModule.closeModal;Util.qs('#ci_save').onclick=async()=>{const today_val=Util.qs('#ci_today').value.trim();const errEl=Util.qs('#ci_error');if(!today_val){errEl.textContent="Tell us what you're working on today.";errEl.classList.add('show');return}const btn=Util.qs('#ci_save');UIModule.setBtnLoading(btn,true,'Submitting…');try{await CheckInModule.create({date:today,yesterday:Util.qs('#ci_yesterday').value.trim(),today:today_val,blockers:Util.qs('#ci_blockers').value.trim()});UIModule.closeModal();UIModule.toast('Check-in submitted!','','success');if(State.currentView==='checkins')ViewCheckIns.render()}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}}
+};
+
+const ViewCheckIns={
+  state:{date:'',user:'all'},
+  render(){resetViewArea();const todayCheckIn=CheckInModule.todayCheckin();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Team Check-ins</div><div class="view-subtitle">Daily standups</div></div><div class="view-actions">${todayCheckIn?`<span class="badge badge-done" style="font-size:12px;padding:6px 12px;">✓ Checked in today</span>`:`<button class="btn btn-primary" id="submitCheckin">✓ Submit today's check-in</button>`}</div></div><div class="filters-bar"><input type="date" id="ciDateFilter" value="${ViewCheckIns.state.date}" style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:7px;padding:7px 10px;color:var(--text);font-size:12.5px;"><select id="ciUserFilter"><option value="all">All team members</option>${Object.values(State.profilesById).map(p=>`<option value="${p.id}">${Util.escapeHtml(p.full_name)}</option>`).join('')}</select></div><div id="checkInsWrap"></div>`;if(!todayCheckIn)Util.qs('#submitCheckin').onclick=()=>CheckInModule.openForm();Util.qs('#ciDateFilter').value=ViewCheckIns.state.date;Util.qs('#ciDateFilter').onchange=e=>{ViewCheckIns.state.date=e.target.value;ViewCheckIns.renderList()};Util.qs('#ciUserFilter').value=ViewCheckIns.state.user;Util.qs('#ciUserFilter').onchange=e=>{ViewCheckIns.state.user=e.target.value;ViewCheckIns.renderList()};ViewCheckIns.renderList()},
+  renderList(){let list=State.checkIns.filter(c=>{const s=ViewCheckIns.state;return(!s.date||c.date===s.date)&&(s.user==='all'||c.user_id===s.user)});const wrap=Util.qs('#checkInsWrap');if(!list.length){wrap.innerHTML=`<div class="empty-state"><div class="et">No check-ins yet</div></div>`;return}const byDate={};list.forEach(c=>{if(!byDate[c.date])byDate[c.date]=[];byDate[c.date].push(c)});const sorted=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));wrap.innerHTML=sorted.map(date=>`<div style="margin-bottom:20px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);font-family:var(--font-mono);margin-bottom:10px;">${new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>${byDate[date].map(c=>{const profile=State.profilesById[c.user_id];return`<div class="checkin-card"><div class="checkin-card-head"><span class="avatar avatar-lg">${Util.initials(profile?.full_name||'?')}</span><div><div style="font-weight:700;font-size:13px;">${Util.escapeHtml(profile?.full_name||'Unknown')}</div><div class="checkin-card-meta">${Util.timeAgo(c.created_at)}</div></div></div>${c.yesterday?`<div class="checkin-field"><div class="checkin-field-label">Yesterday</div><div class="checkin-field-value">${Util.escapeHtml(c.yesterday)}</div></div>`:''}<div class="checkin-field"><div class="checkin-field-label">Today</div><div class="checkin-field-value">${Util.escapeHtml(c.today)}</div></div>${c.blockers?`<div class="checkin-field"><div class="checkin-field-label" style="color:var(--warning);">Blockers</div><div class="checkin-field-value" style="color:var(--warning);">${Util.escapeHtml(c.blockers)}</div></div>`:''}</div>`}).join('')}</div>`).join('')}
+};
+
+const MilestoneModule={
+  async create(payload){const row={id:Util.uuid(),...payload,created_by:State.profile.id,created_at:new Date().toISOString()};const{error}=await supa.from('milestones').insert(row);if(error)throw error;State.milestones.push(row);State.milestones.sort((a,b)=>new Date(a.due_date)-new Date(b.due_date));await ActivityModule.log('milestone_created','milestone',row.id,`created milestone "${row.title}"`);return row},
+  async update(id,payload){const{error}=await supa.from('milestones').update(payload).eq('id',id);if(error)throw error;Object.assign(State.milestones.find(m=>m.id===id),payload)},
+  async remove(id){const m=State.milestones.find(m=>m.id===id);const{error}=await supa.from('milestones').delete().eq('id',id);if(error)throw error;State.milestones=State.milestones.filter(m=>m.id!==id);await ActivityModule.log('milestone_deleted','milestone',id,`deleted milestone "${m?.title||''}"`)},
+  async markComplete(id){await MilestoneModule.update(id,{status:'completed',completed_at:new Date().toISOString()});const m=State.milestones.find(m=>m.id===id);await ActivityModule.log('milestone_completed','milestone',id,`completed milestone "${m?.title||''}"`)},
+  openForm(existing,presetProjectId){const isEdit=!!existing;UIModule.openModal({title:isEdit?'Edit milestone':'New milestone',bodyHtml:`<div class="form-group"><label>Title</label><input type="text" id="mf_title" value="${Util.escapeHtml(existing?.title||'')}" placeholder="e.g. v1.0 Launch"></div><div class="form-group"><label>Description</label><textarea id="mf_desc" placeholder="Details…">${Util.escapeHtml(existing?.description||'')}</textarea></div><div class="form-row"><div class="form-group"><label>Project</label><select id="mf_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}" ${(existing?.project_id||presetProjectId)===p.id?'selected':''}>${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div class="form-group"><label>Due date</label><input type="date" id="mf_due" value="${existing?.due_date||''}"></div></div><div class="form-error" id="mf_error"></div>`,footHtml:`<button class="btn btn-ghost" id="mf_cancel">Cancel</button><button class="btn btn-primary" id="mf_save">${isEdit?'Save changes':'Create milestone'}</button>`});Util.qs('#mf_cancel').onclick=UIModule.closeModal;Util.qs('#mf_save').onclick=async()=>{const title=Util.qs('#mf_title').value.trim();const errEl=Util.qs('#mf_error');if(!title){errEl.textContent='Title is required.';errEl.classList.add('show');return}const dueDate=Util.qs('#mf_due').value;if(!dueDate){errEl.textContent='Due date is required.';errEl.classList.add('show');return}const payload={title,description:Util.qs('#mf_desc').value.trim(),project_id:Util.qs('#mf_project').value||null,due_date:dueDate,status:existing?.status||'pending'};const btn=Util.qs('#mf_save');UIModule.setBtnLoading(btn,true,'Saving…');try{if(isEdit)await MilestoneModule.update(existing.id,payload);else await MilestoneModule.create(payload);UIModule.closeModal();UIModule.toast(isEdit?'Milestone updated':'Milestone created',title,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}},
+  renderList(container,list,showActions){const can=PermissionsModule.canEdit();if(!list.length){container.innerHTML=`<div class="empty-state" style="padding:20px;"><div class="es">No milestones yet.</div></div>`;return}const today=new Date().toISOString().slice(0,10);container.innerHTML=`<div class="panel" style="margin-bottom:0;">${list.map(m=>{const overdue=m.status==='pending'&&m.due_date<today;const dotClass=m.status==='completed'?'done':overdue?'missed':'';return`<div class="milestone-row"><div class="milestone-dot ${dotClass}"></div><div class="milestone-info"><div class="milestone-title">${Util.escapeHtml(m.title)}</div><div class="milestone-date">Due ${Util.fmtDate(m.due_date)} · ${overdue&&m.status==='pending'?'<span style="color:var(--danger);">Overdue</span>':''}${m.status==='completed'?`<span style="color:var(--success);">Completed</span>`:''}${m.status==='pending'&&!overdue?'<span style="color:var(--text-faint);">Pending</span>':''}</div></div><span class="badge badge-${m.status}">${m.status}</span>${showActions&&can?`<div style="display:flex;gap:6px;">${m.status==='pending'?`<button class="btn btn-sm btn-ghost" data-complete="${m.id}">✓ Done</button>`:''}<button class="btn btn-sm btn-ghost" data-editmile="${m.id}">Edit</button><button class="btn btn-sm btn-ghost" data-delmile="${m.id}" style="color:var(--danger);">Delete</button></div>`:''}</div>`}).join('')}</div>`;if(showActions&&can){Util.qsa('[data-complete]',container).forEach(b=>b.onclick=async()=>{await MilestoneModule.markComplete(b.dataset.complete);UIModule.toast('Milestone completed!','','success');Router.navigate(State.currentView,{projectId:State.currentProjectId})});Util.qsa('[data-editmile]',container).forEach(b=>b.onclick=()=>MilestoneModule.openForm(State.milestones.find(m=>m.id===b.dataset.editmile)));Util.qsa('[data-delmile]',container).forEach(b=>b.onclick=()=>{const m=State.milestones.find(m=>m.id===b.dataset.delmile);UIModule.confirm(`Delete "${m.title}"?`,async()=>{await MilestoneModule.remove(m.id);UIModule.toast('Milestone deleted');Router.navigate(State.currentView,{projectId:State.currentProjectId})})})}
+  }
+};
+
+const ViewProjectDetail={
+  tab:'overview',
+  render(params){resetViewArea();const project=ProjectModule.get(State.currentProjectId);if(!project){Util.qs('#viewArea').innerHTML=`<div class="empty-state"><div class="et">Project not found</div></div>`;return}const pct=TaskModule.projectProgress(project.id);const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><a href="#" id="backToProjects" style="font-size:11.5px;color:var(--text-faint);">← All projects</a><div class="view-title" style="margin-top:6px;">${Util.escapeHtml(project.name)} <span class="badge badge-${project.status}">${project.status}</span></div><div class="view-subtitle">${Util.escapeHtml(project.description||'No description')}</div></div><div class="view-actions">${can?`<button class="btn btn-ghost" id="editProjBtn">Edit project</button>`:''}</div></div><div class="panel" style="margin-bottom:18px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:8px;"><span>Progress</span><span class="mono">${pct}%</span></div><div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%;"></div></div><div style="display:flex;gap:24px;margin-top:14px;font-size:12px;color:var(--text-faint);flex-wrap:wrap;"><span>Owner: <b style="color:var(--text-dim);">${Util.escapeHtml(Util.userName(project.owner_id))}</b></span><span>Start: <span class="mono">${Util.fmtDate(project.start_date)}</span></span><span>End: <span class="mono">${Util.fmtDate(project.end_date)}</span></span></div></div><div class="tab-row">${['overview','tasks','issues','milestones','files','activity'].map(t=>`<div class="tab-btn ${ViewProjectDetail.tab===t?'active':''}" data-tab="${t}">${t[0].toUpperCase()+t.slice(1)}</div>`).join('')}</div><div id="projTabContent"></div>`;Util.qs('#backToProjects').onclick=e=>{e.preventDefault();Router.navigate('projects')};if(can)Util.qs('#editProjBtn').onclick=()=>ProjectModule.openForm(project);Util.qsa('.tab-btn').forEach(t=>t.onclick=()=>{ViewProjectDetail.tab=t.dataset.tab;ViewProjectDetail.render()});ViewProjectDetail.renderTab(project)},
+  renderTab(project){const wrap=Util.qs('#projTabContent');const projTasks=State.tasks.filter(t=>t.project_id===project.id);const projIssues=State.issues.filter(i=>i.project_id===project.id);const projFiles=State.files.filter(f=>f.project_id===project.id);const projActivities=State.activities.filter(a=>a.entity_id===project.id||(a.description||'').includes(project.name));const projMilestones=State.milestones.filter(m=>m.project_id===project.id);if(ViewProjectDetail.tab==='overview'){wrap.innerHTML=`<div class="dash-grid"><div class="panel"><div class="panel-title">Task breakdown</div>${projTasks.length?`<div style="display:flex;gap:10px;flex-wrap:wrap;">${['todo','doing','done'].map(s=>`<span class="badge badge-${s}">${projTasks.filter(t=>t.status===s).length} ${s}</span>`).join('')}</div>`:'<div class="empty-state"><div class="es">No tasks yet.</div></div>'}</div><div class="panel"><div class="panel-title">Issue breakdown</div>${projIssues.length?`<div style="display:flex;gap:10px;">${['open','fixed'].map(s=>`<span class="badge badge-${s}">${projIssues.filter(i=>i.status===s).length} ${s}</span>`).join('')}</div>`:'<div class="empty-state"><div class="es">No issues.</div></div>'}</div></div><div class="panel"><div class="panel-title">Upcoming milestones</div><div id="overviewMilestones"></div></div>`;MilestoneModule.renderList(Util.qs('#overviewMilestones'),projMilestones.filter(m=>m.status==='pending').slice(0,3),false)}else if(ViewProjectDetail.tab==='tasks'){wrap.innerHTML=`<div style="margin-bottom:12px;">${PermissionsModule.canEdit()?`<button class="btn btn-primary btn-sm" id="addTaskHere">+ Add task</button>`:''}</div><div id="projKanban"></div>`;if(PermissionsModule.canEdit())Util.qs('#addTaskHere').onclick=()=>TaskModule.openForm(null,project.id);TaskModule.renderKanban(Util.qs('#projKanban'),projTasks)}else if(ViewProjectDetail.tab==='issues'){wrap.innerHTML=`<div style="margin-bottom:12px;">${PermissionsModule.canEdit()?`<button class="btn btn-primary btn-sm" id="addIssueHere">+ Report issue</button>`:''}</div><div id="projIssuesTable"></div>`;if(PermissionsModule.canEdit())Util.qs('#addIssueHere').onclick=()=>IssueModule.openForm(null,project.id);IssueModule.renderTable(Util.qs('#projIssuesTable'),projIssues)}else if(ViewProjectDetail.tab==='milestones'){wrap.innerHTML=`<div style="margin-bottom:12px;">${PermissionsModule.canEdit()?`<button class="btn btn-primary btn-sm" id="addMilestoneHere">+ Add milestone</button>`:''}</div><div id="projMilestonesWrap"></div>`;if(PermissionsModule.canEdit())Util.qs('#addMilestoneHere').onclick=()=>MilestoneModule.openForm(null,project.id);MilestoneModule.renderList(Util.qs('#projMilestonesWrap'),projMilestones,true)}else if(ViewProjectDetail.tab==='files'){wrap.innerHTML=`<div style="margin-bottom:12px;">${PermissionsModule.canEdit()?`<button class="btn btn-primary btn-sm" id="addFileHere">+ Upload file</button>`:''}</div><div id="projFilesGrid"></div>`;if(PermissionsModule.canEdit())Util.qs('#addFileHere').onclick=()=>FileModule.openUploadForm(project.id);FileModule.renderGrid(Util.qs('#projFilesGrid'),projFiles)}else if(ViewProjectDetail.tab==='activity'){wrap.innerHTML=`<div class="panel"><div class="activity-list" id="projActivityList"></div></div>`;const list=Util.qs('#projActivityList');if(!projActivities.length)list.innerHTML=`<div class="empty-state"><div class="es">No activity.</div></div>`;else list.innerHTML=projActivities.slice(0,40).map(a=>`<div class="activity-row"><div class="activity-dot"></div><div><div class="activity-text"><b>${Util.escapeHtml(Util.userName(a.user_id))}</b> ${Util.escapeHtml(a.description)}</div><div class="activity-time">${Util.timeAgo(a.created_at)}</div></div></div>`).join('')}
+  }
+};
+
+const FileModule={
+  iconFor(type){if(/image/.test(type))return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;if(/pdf/.test(type))return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;return`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>`},
+  async upload(file,projectId,category){const ext=file.name.split('.').pop();const path=`${State.profile.id}/${Util.uuid()}.${ext}`;const{error:upErr}=await supa.storage.from(STORAGE_BUCKET).upload(path,file);if(upErr)throw upErr;const row={id:Util.uuid(),project_id:projectId||null,file_name:file.name,file_path:path,file_type:file.type||category,file_size:file.size,category,uploaded_by:State.profile.id,created_at:new Date().toISOString()};const{error}=await supa.from('files').insert(row);if(error)throw error;State.files.unshift(row);await ActivityModule.log('file_uploaded','file',row.id,`uploaded file "${row.file_name}"`);return row},
+  async remove(id){const file=State.files.find(f=>f.id===id);await supa.storage.from(STORAGE_BUCKET).remove([file.file_path]);const{error}=await supa.from('files').delete().eq('id',id);if(error)throw error;State.files=State.files.filter(f=>f.id!==id);await ActivityModule.log('file_deleted','file',id,`deleted file "${file?.file_name||''}"`)},
+  async getUrl(file){const{data,error}=await supa.storage.from(STORAGE_BUCKET).createSignedUrl(file.file_path,3600);if(error){UIModule.toast('Could not access file',error.message,'error');return null}return data.signedUrl},
+  openUploadForm(presetProjectId){UIModule.openModal({title:'Upload file',bodyHtml:`<div class="form-group"><label>File</label><input type="file" id="ff_file" accept="image/*,.pdf,.doc,.docx,.zip"></div><div class="form-group"><label>Project</label><select id="ff_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}" ${presetProjectId===p.id?'selected':''}>${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div class="form-group"><label>Category</label><select id="ff_category"><option value="image">Image</option><option value="pdf">PDF</option><option value="document">Document</option><option value="blueprint">Blueprint</option></select></div><div class="form-error" id="ff_error"></div>`,footHtml:`<button class="btn btn-ghost" id="ff_cancel">Cancel</button><button class="btn btn-primary" id="ff_save">Upload</button>`});Util.qs('#ff_cancel').onclick=UIModule.closeModal;Util.qs('#ff_save').onclick=async()=>{const fi=Util.qs('#ff_file');const errEl=Util.qs('#ff_error');if(!fi.files.length){errEl.textContent='Choose a file.';errEl.classList.add('show');return}const btn=Util.qs('#ff_save');UIModule.setBtnLoading(btn,true,'Uploading…');try{await FileModule.upload(fi.files[0],Util.qs('#ff_project').value||null,Util.qs('#ff_category').value);UIModule.closeModal();UIModule.toast('File uploaded',fi.files[0].name,'success');Router.navigate(State.currentView,{projectId:State.currentProjectId})}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}},
+  async renderGrid(container,list){const can=PermissionsModule.canEdit();if(!list.length){container.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l1.5-3h15L21 7"/><rect x="3" y="7" width="18" height="13" rx="1.5"/></svg><div class="et">No files yet</div></div>`;return}const signedUrls={};await Promise.all(list.filter(f=>/image/.test(f.file_type||f.category)).map(async f=>{const url=await FileModule.getUrl(f);if(url)signedUrls[f.id]=url}));container.innerHTML=`<div class="file-grid">${list.map(f=>{const isImage=/image/.test(f.file_type||f.category);const preview=isImage&&signedUrls[f.id]?`<img src="${Util.escapeHtml(signedUrls[f.id])}" class="file-preview-img" alt="${Util.escapeHtml(f.file_name)}" onerror="this.style.display='none'">`:`<div class="file-preview-placeholder">${FileModule.iconFor(f.file_type||f.category)}</div>`;return`<div class="file-card">${preview}<div class="file-name">${Util.escapeHtml(f.file_name)}</div><div class="file-meta">${Util.fmtBytes(f.file_size)} · ${Util.fmtDate(f.created_at)}</div><div class="file-meta">By ${Util.escapeHtml(Util.userName(f.uploaded_by))}</div><div class="file-actions">${isImage?`<button class="btn btn-sm btn-ghost" data-previewfile="${f.id}">Preview</button>`:''}<button class="btn btn-sm btn-ghost" data-dlfile="${f.id}">Download</button>${can?`<button class="btn btn-sm btn-ghost" data-delfile="${f.id}" style="color:var(--danger);">Delete</button>`:''}</div></div>`}).join('')}</div>`;Util.qsa('[data-previewfile]',container).forEach(b=>{b.onclick=async()=>{const file=list.find(f=>f.id===b.dataset.previewfile);const url=signedUrls[file.id]||await FileModule.getUrl(file);if(!url)return;UIModule.openModal({title:file.file_name,bodyHtml:`<img src="${Util.escapeHtml(url)}" class="img-preview-modal" alt="${Util.escapeHtml(file.file_name)}">`,wide:true})}});Util.qsa('[data-dlfile]',container).forEach(b=>b.onclick=async()=>{const file=list.find(f=>f.id===b.dataset.dlfile);const url=signedUrls[file.id]||await FileModule.getUrl(file);if(url)window.open(url,'_blank')});Util.qsa('[data-delfile]',container).forEach(b=>b.onclick=()=>{const file=list.find(f=>f.id===b.dataset.delfile);UIModule.confirm(`Delete "${file.file_name}"?`,async()=>{await FileModule.remove(file.id);UIModule.toast('File deleted',file.file_name);Router.navigate(State.currentView,{projectId:State.currentProjectId})})})}
+};
+
+const ViewArchive={
+  state:{search:'',project:'all',type:'all'},
+  render(){resetViewArea();const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Archive</div><div class="view-subtitle">Blueprints, documents and images</div></div><div class="view-actions">${can?`<button class="btn btn-primary" id="newFileBtn">+ Upload file</button>`:''}</div></div><div class="filters-bar"><input type="text" id="fileSearch" placeholder="Search files…" value="${ViewArchive.state.search}"><select id="fileProjectFilter"><option value="all">All projects</option>${State.projects.map(p=>`<option value="${p.id}">${Util.escapeHtml(p.name)}</option>`).join('')}</select><select id="fileTypeFilter"><option value="all">All types</option><option value="image">Image</option><option value="pdf">PDF</option><option value="document">Document</option><option value="blueprint">Blueprint</option></select></div><div id="archiveGrid"></div>`;if(can)Util.qs('#newFileBtn').onclick=()=>FileModule.openUploadForm();Util.qs('#fileProjectFilter').value=ViewArchive.state.project;Util.qs('#fileTypeFilter').value=ViewArchive.state.type;Util.qs('#fileSearch').addEventListener('input',Util.debounce(e=>{ViewArchive.state.search=e.target.value;ViewArchive.renderGrid()},200));Util.qs('#fileProjectFilter').onchange=e=>{ViewArchive.state.project=e.target.value;ViewArchive.renderGrid()};Util.qs('#fileTypeFilter').onchange=e=>{ViewArchive.state.type=e.target.value;ViewArchive.renderGrid()};ViewArchive.renderGrid()},
+  renderGrid(){let list=State.files.filter(f=>{const s=ViewArchive.state;return(!s.search||f.file_name.toLowerCase().includes(s.search.toLowerCase()))&&(s.project==='all'||f.project_id===s.project)&&(s.type==='all'||f.category===s.type)});FileModule.renderGrid(Util.qs('#archiveGrid'),list)}
+};
+
+const ViewActivity={
+  state:{user:'all',action:'all'},
+  render(){resetViewArea();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Activity Feed</div><div class="view-subtitle">Full history of changes</div></div></div><div class="filters-bar"><select id="actUserFilter"><option value="all">All users</option>${Object.values(State.profilesById).map(p=>`<option value="${p.id}">${Util.escapeHtml(p.full_name)}</option>`).join('')}</select><select id="actTypeFilter"><option value="all">All actions</option>${['login','logout','project_created','task_created','task_completed','issue_created','issue_fixed','file_uploaded','milestone_created','checkin'].map(a=>`<option value="${a}">${a.replace(/_/g,' ')}</option>`).join('')}</select></div><div class="panel"><div class="activity-list" id="fullActivityList"></div></div>`;Util.qs('#actUserFilter').value=ViewActivity.state.user;Util.qs('#actTypeFilter').value=ViewActivity.state.action;Util.qs('#actUserFilter').onchange=e=>{ViewActivity.state.user=e.target.value;ViewActivity.renderList()};Util.qs('#actTypeFilter').onchange=e=>{ViewActivity.state.action=e.target.value;ViewActivity.renderList()};ViewActivity.renderList()},
+  renderList(){let list=State.activities.filter(a=>{const s=ViewActivity.state;return(s.user==='all'||a.user_id===s.user)&&(s.action==='all'||a.action===s.action)});const wrap=Util.qs('#fullActivityList');if(!wrap)return;if(!list.length){wrap.innerHTML=`<div class="empty-state"><div class="es">No activity.</div></div>`;return}wrap.innerHTML=list.slice(0,150).map(a=>`<div class="activity-row"><div class="activity-dot"></div><div><div class="activity-text"><b>${Util.escapeHtml(Util.userName(a.user_id))}</b> ${Util.escapeHtml(a.description)}</div><div class="activity-time">${Util.fmtDateTime(a.created_at)}</div></div></div>`).join('')}
+};
+
+const ViewExport={
+  render(){resetViewArea();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Export</div><div class="view-subtitle">Download your workspace data</div></div></div><div class="settings-grid"><div class="export-section"><h4>📁 Projects</h4><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">${State.projects.length} projects</p><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" onclick="ExportModule.csv('projects')">CSV</button><button class="btn btn-ghost btn-sm" onclick="ExportModule.json('projects')">JSON</button></div></div><div class="export-section"><h4>✓ Tasks</h4><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">${State.tasks.length} tasks</p><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" onclick="ExportModule.csv('tasks')">CSV</button><button class="btn btn-ghost btn-sm" onclick="ExportModule.json('tasks')">JSON</button></div></div><div class="export-section"><h4>⚠ Issues</h4><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">${State.issues.length} issues</p><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" onclick="ExportModule.csv('issues')">CSV</button><button class="btn btn-ghost btn-sm" onclick="ExportModule.json('issues')">JSON</button></div></div><div class="export-section"><h4>📦 Repositories</h4><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">${State.repositories.length} repos · ${State.commits.length} commits</p><div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" onclick="ExportModule.json('repositories')">Repos JSON</button></div></div><div class="export-section"><h4>🗂 Full backup</h4><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">All data in one file</p><button class="btn btn-primary btn-sm" onclick="ExportModule.fullBackup()">Download backup</button></div></div>`}
+};
+
+const ExportModule={
+  toCSV(data){if(!data.length)return'';const headers=Object.keys(data[0]);const rows=[headers.join(','),...data.map(row=>headers.map(h=>{const v=row[h];if(v===null||v===undefined)return'';return`"${String(v).replace(/"/g,'""')}"`}).join(','))];return rows.join('\n')},
+  download(content,filename,mime='text/plain'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)},
+  csv(key){const data=State[key];if(!data?.length){UIModule.toast('Nothing to export','','error');return}ExportModule.download(ExportModule.toCSV(data),`${key}_${new Date().toISOString().slice(0,10)}.csv`,'text/csv');UIModule.toast(`${key} exported as CSV`,'','success')},
+  json(key){const data=State[key];if(!data?.length){UIModule.toast('Nothing to export','','error');return}ExportModule.download(JSON.stringify(data,null,2),`${key}_${new Date().toISOString().slice(0,10)}.json`,'application/json');UIModule.toast(`${key} exported as JSON`,'','success')},
+  fullBackup(){const backup={exported_at:new Date().toISOString(),workspace:{projects:State.projects,tasks:State.tasks,issues:State.issues,milestones:State.milestones,checkIns:State.checkIns,files:State.files,activities:State.activities,repositories:State.repositories,commits:State.commits,branches:State.branches,pullRequests:State.pullRequests,releases:State.releases,chatRooms:State.chatRooms,profiles:Object.values(State.profilesById)}};ExportModule.download(JSON.stringify(backup,null,2),`workspace_backup_${new Date().toISOString().slice(0,10)}.json`,'application/json');UIModule.toast('Full backup downloaded!','','success')}
+};
+
+const ViewSettings={
+  render(){resetViewArea();const isAdmin=PermissionsModule.isAdmin();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Settings</div><div class="view-subtitle">Profile, preferences and workspace</div></div></div><div class="settings-grid"><div class="panel"><div class="panel-title">Profile</div><div class="form-group"><label>Full name</label><input type="text" id="settingsName" value="${Util.escapeHtml(State.profile.full_name)}"></div><div class="form-group"><label>Email</label><input type="text" value="${Util.escapeHtml(State.profile.email)}" disabled></div><div class="form-group"><label>Role</label><input type="text" value="${State.profile.role}" disabled></div><button class="btn btn-primary btn-sm" id="saveProfileBtn">Save changes</button></div><div class="panel"><div class="panel-title">Preferences</div><div class="toggle-row"><div>Dark mode</div><label class="toggle"><input type="checkbox" id="settingsDarkToggle" ${document.documentElement.getAttribute('data-theme')!=='light'?'checked':''}><span class="toggle-knob"></span></label></div></div></div>${isAdmin?`<div class="panel" style="margin-top:18px;"><div class="panel-title">Team members</div><div id="membersList"></div></div>`:''}<div class="panel" style="margin-top:18px;"><div class="panel-title">Direct Messages</div><p style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px;">Start a private conversation with any team member.</p><div id="dmList"></div></div>`;Util.qs('#saveProfileBtn').onclick=async()=>{const btn=Util.qs('#saveProfileBtn');const name=Util.qs('#settingsName').value.trim();if(!name)return;UIModule.setBtnLoading(btn,true,'Saving…');try{const{error}=await supa.from('profiles').update({full_name:name}).eq('id',State.profile.id);if(error)throw error;State.profile.full_name=name;Util.qs('#userTriggerName').textContent=name;Util.qs('#userAvatar').textContent=Util.initials(name);Util.qs('#ddUserName').textContent=name;UIModule.toast('Profile updated','','success')}catch(err){UIModule.toast('Could not save',err.message,'error')}finally{UIModule.setBtnLoading(btn,false)}};Util.qs('#settingsDarkToggle').onchange=e=>ThemeModule.set(e.target.checked?'dark':'light');if(isAdmin)ViewSettings.renderMembers();ViewSettings.renderDMList()},
+  renderMembers(){const wrap=Util.qs('#membersList');const members=Object.values(State.profilesById);wrap.innerHTML=members.map(m=>`<div class="member-row"><span class="avatar">${Util.initials(m.full_name)}</span><div class="member-info"><div class="member-name">${Util.escapeHtml(m.full_name)}</div><div class="member-email">${Util.escapeHtml(m.email)}</div></div><select data-roleuser="${m.id}" ${m.id===State.profile.id?'disabled':''} style="background:var(--surface-2);border:1px solid var(--border-soft);border-radius:6px;padding:5px 8px;color:var(--text);font-size:12px;">${['admin','member','viewer'].map(r=>`<option value="${r}" ${m.role===r?'selected':''}>${r}</option>`).join('')}</select></div>`).join('');Util.qsa('[data-roleuser]',wrap).forEach(sel=>sel.onchange=async()=>{try{const{error}=await supa.from('profiles').update({role:sel.value}).eq('id',sel.dataset.roleuser);if(error)throw error;State.profilesById[sel.dataset.roleuser].role=sel.value;UIModule.toast('Role updated','','success')}catch(err){UIModule.toast('Could not update role',err.message,'error')}})},
+  renderDMList(){const wrap=Util.qs('#dmList');if(!wrap)return;const others=Object.values(State.profilesById).filter(p=>p.id!==State.profile.id);if(!others.length){wrap.innerHTML=`<div style="font-size:12.5px;color:var(--text-faint);">No other team members yet.</div>`;return}wrap.innerHTML=others.map(m=>`<div class="member-row"><span class="avatar">${Util.initials(m.full_name)}</span><div class="member-info"><div class="member-name">${Util.escapeHtml(m.full_name)}</div><div class="member-email">${m.role}</div></div><button class="btn btn-sm btn-teal" data-dmuser="${m.id}">💬 Message</button></div>`).join('');Util.qsa('[data-dmuser]',wrap).forEach(b=>b.onclick=async()=>{await ChatModule.openDirectMessage(b.dataset.dmuser)})}
+};
+
+const RepoModule={
+  async create(payload){const row={id:Util.uuid(),...payload,created_by:State.profile.id,created_at:new Date().toISOString()};const{error}=await supa.from('repositories').insert(row);if(error)throw error;State.repositories.unshift(row);const branch={id:Util.uuid(),repo_id:row.id,name:'main',created_from:null,created_by:State.profile.id,created_at:new Date().toISOString()};await supa.from('branches').insert(branch);State.branches.push(branch);await ActivityModule.log('repo_created','repo',row.id,`created repository "${row.name}"`);return row},
+  async remove(id){const repo=State.repositories.find(r=>r.id===id);const{error}=await supa.from('repositories').delete().eq('id',id);if(error)throw error;State.repositories=State.repositories.filter(r=>r.id!==id);await ActivityModule.log('repo_deleted','repo',id,`deleted repository "${repo?.name||''}"`)},
+  get(id){return State.repositories.find(r=>r.id===id)},
+  openForm(existing){const isEdit=!!existing;UIModule.openModal({title:isEdit?'Edit repository':'New repository',bodyHtml:`<div class="form-group"><label>Repository name</label><input type="text" id="rf_name" value="${Util.escapeHtml(existing?.name||'')}" placeholder="e.g. site-frontend"></div><div class="form-group"><label>Description</label><textarea id="rf_desc" placeholder="What does this repo contain?">${Util.escapeHtml(existing?.description||'')}</textarea></div><div class="form-group"><label>Linked project</label><select id="rf_project"><option value="">No project</option>${State.projects.map(p=>`<option value="${p.id}" ${existing?.project_id===p.id?'selected':''}>${Util.escapeHtml(p.name)}</option>`).join('')}</select></div><div class="form-error" id="rf_error"></div>`,footHtml:`<button class="btn btn-ghost" id="rf_cancel">Cancel</button><button class="btn btn-purple" id="rf_save">${isEdit?'Save changes':'Create repository'}</button>`});Util.qs('#rf_cancel').onclick=UIModule.closeModal;Util.qs('#rf_save').onclick=async()=>{const name=Util.qs('#rf_name').value.trim();const errEl=Util.qs('#rf_error');if(!name){errEl.textContent='Repository name is required.';errEl.classList.add('show');return}const payload={name,description:Util.qs('#rf_desc').value.trim(),project_id:Util.qs('#rf_project').value||null};const btn=Util.qs('#rf_save');UIModule.setBtnLoading(btn,true,'Creating…');try{if(isEdit){const{error}=await supa.from('repositories').update(payload).eq('id',existing.id);if(error)throw error;Object.assign(State.repositories.find(r=>r.id===existing.id),payload)}else{await RepoModule.create(payload)}UIModule.closeModal();UIModule.toast(isEdit?'Repo updated':'Repository created',name,'success');Router.navigate('repositories')}catch(err){errEl.textContent=err.message;errEl.classList.add('show')}finally{UIModule.setBtnLoading(btn,false)}}}
+};
+
+const ViewRepositories={
+  render(){resetViewArea();const can=PermissionsModule.canEdit();Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><div class="view-title">Repositories</div><div class="view-subtitle">${State.repositories.length} ${State.repositories.length===1?'repository':'repositories'}</div></div><div class="view-actions">${can?`<button class="btn btn-purple" id="newRepoBtn">+ New repository</button>`:''}</div></div><div id="repoList"></div>`;if(can)Util.qs('#newRepoBtn').onclick=()=>RepoModule.openForm();ViewRepositories.renderList()},
+  renderList(){const wrap=Util.qs('#repoList');if(!State.repositories.length){wrap.innerHTML=`<div class="empty-state"><div class="et">No repositories yet</div></div>`;return}const can=PermissionsModule.canEdit();wrap.innerHTML=State.repositories.map(repo=>{const repoBranches=State.branches.filter(b=>b.repo_id===repo.id&&!b.deleted_at).length;const repoCommits=State.commits.filter(c=>c.repo_id===repo.id).length;const openPRs=State.pullRequests.filter(p=>p.repo_id===repo.id&&p.status==='open').length;return`<div class="repo-card" data-repoid="${repo.id}"><div class="repo-card-head"><div class="repo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"/><path d="M12 12v3"/></svg></div><div><div class="repo-name">${Util.escapeHtml(repo.name)}</div>${repo.project_id?`<div style="font-size:11px;color:var(--text-faint);">Linked: ${Util.escapeHtml(DataModule.projectName(repo.project_id))}</div>`:''}</div>${can?`<div style="margin-left:auto;display:flex;gap:6px;"><button class="btn btn-sm btn-ghost" data-editrepo="${repo.id}">Edit</button><button class="btn btn-sm btn-ghost" data-delrepo="${repo.id}" style="color:var(--danger);">Delete</button></div>`:''}</div><div class="repo-desc">${Util.escapeHtml(repo.description||'No description.')}</div><div class="repo-stats"><div class="repo-stat">⎇ ${repoBranches} branch${repoBranches===1?'':'es'}</div><div class="repo-stat">● ${repoCommits} commit${repoCommits===1?'':'s'}</div><div class="repo-stat">⇡ ${openPRs} open PR${openPRs===1?'':'s'}</div></div></div>`}).join('');Util.qsa('.repo-card').forEach(el=>{el.addEventListener('click',e=>{if(e.target.closest('[data-editrepo]')||e.target.closest('[data-delrepo]'))return;Router.navigate('repo-detail',{repoId:el.dataset.repoid})})});Util.qsa('[data-editrepo]').forEach(b=>b.onclick=e=>{e.stopPropagation();RepoModule.openForm(RepoModule.get(b.dataset.editrepo))});Util.qsa('[data-delrepo]').forEach(b=>b.onclick=e=>{e.stopPropagation();const repo=RepoModule.get(b.dataset.delrepo);UIModule.confirm(`Delete repository "${repo.name}"?`,async()=>{await RepoModule.remove(repo.id);UIModule.toast('Repository deleted',repo.name);ViewRepositories.renderList()})})}
+};
+
+const ViewRepoDetail={
+  tab:'commits',
+  render(params){resetViewArea();const repo=RepoModule.get(State.currentRepoId);if(!repo){Util.qs('#viewArea').innerHTML=`<div class="empty-state"><div class="et">Repository not found</div></div>`;return}Util.qs('#viewArea').innerHTML=`<div class="view-header"><div><a href="#" id="backToRepos" style="font-size:11.5px;color:var(--text-faint);">← Repositories</a><div class="view-title" style="margin-top:6px;">${Util.escapeHtml(repo.name)}</div><div class="view-subtitle">${Util.escapeHtml(repo.description||'No description')}</div></div><div class="view-actions"><button class="btn btn-purple" id="newCommitBtn">+ Commit</button><button class="btn btn-ghost" id="newBranchBtn">+ Branch</button><button class="btn btn-ghost" id="newPRBtn">Open PR</button></div></div><div style="display:flex;gap:16px;font-size:12.5px;color:var(--text-faint);margin-bottom:18px;font-family:var(--font-mono);flex-wrap:wrap;"><span>⎇ ${State.branches.filter(b=>b.repo_id===repo.id&&!b.deleted_at).length} branches</span><span>● ${State.commits.filter(c=>c.repo_id===repo.id).length} commits</span></div><div class="tab-row">${['commits','branches','pull-requests'].map(t=>`<div class="tab-btn ${ViewRepoDetail.tab===t?'active':''}" data-repotab="${t}">${t.replace('-',' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>`).join('')}</div><div id="repoTabContent"></div>`;Util.qs('#backToRepos').onclick=e=>{e.preventDefault();Router.navigate('repositories')};Util.qsa('[data-repotab]').forEach(t=>t.onclick=()=>{ViewRepoDetail.tab=t.dataset.repotab;ViewRepoDetail.render()});Util.qs('#newCommitBtn').onclick=()=>{UIModule.toast('Commit feature','Coming soon!','success')};Util.qs('#newBranchBtn').onclick=()=>{UIModule.toast('Branch feature','Coming soon!','success')};Util.qs('#newPRBtn').onclick=()=>{UIModule.toast('PR feature','Coming soon!','success')};const commits=State.commits.filter(c=>c.repo_id===repo.id);const wrap=Util.qs('#repoTabContent');if(ViewRepoDetail.tab==='commits'){if(!commits.length){wrap.innerHTML=`<div class="empty-state"><div class="et">No commits yet</div></div>`;return}wrap.innerHTML=commits.map(c=>`<div class="commit-row"><div class="commit-hash">${c.hash||'0000000'}</div><div style="flex:1;"><div class="commit-msg">${Util.escapeHtml(c.message)}</div><div class="commit-meta">${Util.escapeHtml(Util.userName(c.author_id))} on ${Util.fmtDate(c.created_at)} · <span class="diff-stat"><span class="diff-add">+${c.additions||0}</span> <span class="diff-del">-${c.deletions||0}</span></span></div></div></div>`).join('')}else if(ViewRepoDetail.tab==='branches'){const branches=State.branches.filter(b=>b.repo_id===repo.id&&!b.deleted_at);if(!branches.length){wrap.innerHTML=`<div class="empty-state"><div class="es">No branches yet.</div></div>`;return}wrap.innerHTML=branches.map(b=>`<div class="branch-row"><div class="branch-name">⎇ ${Util.escapeHtml(b.name)}</div>${b.name==='main'?'<span class="badge role-badge">default</span>':''}</div>`).join('')}else if(ViewRepoDetail.tab==='pull-requests'){const prs=State.pullRequests.filter(p=>p.repo_id===repo.id);if(!prs.length){wrap.innerHTML=`<div class="empty-state"><div class="es">No pull requests yet.</div></div>`;return}wrap.innerHTML=prs.map(pr=>`<div class="pr-row"><div class="pr-info"><div class="pr-title">${Util.escapeHtml(pr.title)}</div><div class="pr-meta">${Util.escapeHtml(pr.source_branch)} → ${Util.escapeHtml(pr.target_branch)} · by ${Util.escapeHtml(Util.userName(pr.author_id))}</div></div><span class="badge badge-${pr.status}">${pr.status}</span></div>`).join('')}}
+};
+
+// =========================================================
+// ROUTER
+// =========================================================
+const Router={
+  navigate(view,params={}){
+    State.currentView=view;State.currentProjectId=params.projectId||null;State.currentRepoId=params.repoId||null;
+    Util.qsa('.nav-item[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));
+    Util.qs('#sidebar').classList.remove('show');Util.qs('#sidebarBackdrop').classList.remove('show');
+    const map={dashboard:ViewDashboard,projects:ViewProjects,'project-detail':ViewProjectDetail,tasks:ViewTasks,issues:ViewIssues,archive:ViewArchive,activity:ViewActivity,settings:ViewSettings,checkins:ViewCheckIns,export:ViewExport,repositories:ViewRepositories,'repo-detail':ViewRepoDetail,chat:ViewChat};
+    const View=map[view]||ViewDashboard;
+    if(view!=='chat')resetViewArea();
+    View.render(params);
+    if(view!=='chat')Util.qs('#viewArea').scrollTop=0;
+  }
+};
+
 function wireNav(){
   document.body.addEventListener('click',e=>{const navEl=e.target.closest('[data-view]');if(navEl){e.preventDefault();Router.navigate(navEl.dataset.view)}});
   Util.qs('#menuToggle').onclick=()=>{Util.qs('#sidebar').classList.add('show');Util.qs('#sidebarBackdrop').classList.add('show')};
@@ -889,20 +1407,12 @@ function wireNav(){
   Util.qs('#logoutBtn').onclick=async()=>AuthModule.logout();
 }
 
-// =========================================================
-// BOOT (continued)
-// =========================================================
-// ... Keep all your existing View modules (ViewDashboard, ViewProjects, etc.)
-// They are too long to include here but you already have them
-
-// Make sure to include ALL your existing View modules here
-// (ViewDashboard, ViewProjects, ViewProjectDetail, TaskModule, IssueModule, etc.)
-// They should all be defined before the app starts
-
-// =========================================================
-// FINAL BOOT
-// =========================================================
-// The DOMContentLoaded event listener is already set above
+window.addEventListener('DOMContentLoaded',async()=>{
+  ThemeModule.init();AuthScreenModule.init();wireNav();SearchModule.init();
+  const hash=window.location.hash;
+  if(hash&&hash.includes('access_token')){await handleOAuthCallback()}
+  else{try{await AuthModule.init()}catch(err){console.error('Init error:',err);Util.qs('#initialLoader').remove();AuthModule.showAuthScreen()}}
+});
 </script>
 </body>
 </html>
